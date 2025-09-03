@@ -1,4 +1,0 @@
-[env]
-DYLD_LIBRARY_PATH = { value = "{cwd}/askar-go/native:${DYLD_LIBRARY_PATH}", force = true }
-
-
