@@ -1,0 +1,60 @@
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Go
+bin/
+*.test
+coverage.out
+
+# Rust (Cargo)
+/target/
+**/target/
+Cargo.lock
+
+# Rust local deps (cloned)
+/rust/indy-shared-rs/
+
+# Built FFI libraries
+/pkg/anoncreds/rs/lib/*.dylib
+/pkg/anoncreds/rs/lib/*.so
+/pkg/anoncreds/rs/lib/*.dll
+/pkg/anoncreds/rs/lib/*.a
+
+# Node/TS (credo-ts)
+credo-ts/**/node_modules/
+credo-ts/**/dist/
+credo-ts/**/.turbo/
+credo-ts/**/.next/
+credo-ts/**/coverage/
+
+# Node artifacts for libsodium interop test
+/pkg/core/crypto/node_modules/
+/pkg/core/crypto/package-lock.json
+/pkg/core/crypto/package.json
+
+# Local artifacts
+*.log
+*.tmp
+*.swp
+
+# Local demo binaries or archives
+/ts-connect
+
+# Mac quarantine or attrs
+*.icloud
+
+anoncreds-rs/
+anoncreds-wrapper-javascript/
+kanon/
+askar-go/
+.gocache
+.gotmp
+*.db
+*.db-shm
+*.db-wal
