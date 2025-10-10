@@ -13,9 +13,9 @@ type CredentialDefinitionRecord struct {
 	*storage.BaseRecord
 
 	// Core fields
-	CredentialDefinitionID string                               `json:"credentialDefinitionId"`
-	CredentialDefinition   registry.CredentialDefinition        `json:"credentialDefinition"`
-	MethodName             string                               `json:"methodName"` // e.g., "kanon", "indy"
+	CredentialDefinitionID string                        `json:"credentialDefinitionId"`
+	CredentialDefinition   registry.CredentialDefinition `json:"credentialDefinition"`
+	MethodName             string                        `json:"methodName"` // e.g., "kanon", "indy"
 }
 
 // NewCredentialDefinitionRecord creates a new credential definition record
@@ -54,7 +54,7 @@ func (r *CredentialDefinitionRecord) FromJSON(data []byte) error {
 // Clone creates a deep copy of the record
 func (r *CredentialDefinitionRecord) Clone() storage.Record {
 	cloned := &CredentialDefinitionRecord{
-		BaseRecord:             &storage.BaseRecord{
+		BaseRecord: &storage.BaseRecord{
 			ID:        r.ID,
 			Type:      r.Type,
 			Tags:      make(map[string]string),

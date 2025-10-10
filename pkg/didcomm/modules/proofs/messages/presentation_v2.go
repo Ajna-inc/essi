@@ -8,8 +8,8 @@ const PresentationV2Type = "https://didcomm.org/present-proof/2.0/presentation"
 
 type PresentationV2 struct {
 	*messages.BaseMessage
-	Comment       string                    `json:"comment,omitempty"`
-	Formats       []AttachmentFormat           `json:"formats"`
+	Comment       string                         `json:"comment,omitempty"`
+	Formats       []AttachmentFormat             `json:"formats"`
 	Presentations []messages.AttachmentDecorator `json:"presentations~attach"`
 }
 

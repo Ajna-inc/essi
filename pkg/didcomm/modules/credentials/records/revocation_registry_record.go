@@ -3,7 +3,7 @@ package records
 import (
 	"encoding/json"
 	"fmt"
-	
+
 	"github.com/ajna-inc/essi/pkg/core/storage"
 )
 
@@ -19,7 +19,7 @@ const (
 // RevocationRegistryDefinitionRecord stores public revocation registry definition
 type RevocationRegistryDefinitionRecord struct {
 	*storage.BaseRecord
-	
+
 	RevocationRegistryDefinitionId string                 `json:"revocationRegistryDefinitionId"`
 	CredentialDefinitionId         string                 `json:"credentialDefinitionId"`
 	RevocationRegistryDefinition   map[string]interface{} `json:"revocationRegistryDefinition"`
@@ -28,13 +28,13 @@ type RevocationRegistryDefinitionRecord struct {
 // RevocationRegistryDefinitionPrivateRecord stores private revocation registry data
 type RevocationRegistryDefinitionPrivateRecord struct {
 	*storage.BaseRecord
-	
+
 	RevocationRegistryDefinitionId string                  `json:"revocationRegistryDefinitionId"`
 	CredentialDefinitionId         string                  `json:"credentialDefinitionId"`
-	Value                         map[string]interface{}  `json:"value"` // Private key data
-	State                         RevocationRegistryState `json:"state"`
-	CurrentIndex                  int                     `json:"currentIndex"`
-	MaxCredNum                    int                     `json:"maxCredNum"`
+	Value                          map[string]interface{}  `json:"value"` // Private key data
+	State                          RevocationRegistryState `json:"state"`
+	CurrentIndex                   int                     `json:"currentIndex"`
+	MaxCredNum                     int                     `json:"maxCredNum"`
 }
 
 // NewRevocationRegistryDefinitionRecord creates a new public registry record
@@ -48,7 +48,7 @@ func NewRevocationRegistryDefinitionRecord(id string) *RevocationRegistryDefinit
 	}
 }
 
-// NewRevocationRegistryDefinitionPrivateRecord creates a new private registry record  
+// NewRevocationRegistryDefinitionPrivateRecord creates a new private registry record
 func NewRevocationRegistryDefinitionPrivateRecord(id string) *RevocationRegistryDefinitionPrivateRecord {
 	return &RevocationRegistryDefinitionPrivateRecord{
 		BaseRecord: &storage.BaseRecord{
@@ -86,12 +86,12 @@ func (r *RevocationRegistryDefinitionPrivateRecord) GetNextIndex() (int, error) 
 	if r.State == RevocationStateFull {
 		return 0, fmt.Errorf("revocation registry is full")
 	}
-	
+
 	r.CurrentIndex++
 	if r.CurrentIndex >= r.MaxCredNum {
 		r.State = RevocationStateFull
 	}
-	
+
 	return r.CurrentIndex, nil
 }
 
@@ -105,7 +105,7 @@ func init() {
 			},
 		}
 	})
-	
+
 	storage.RegisterRecordType("RevocationRegistryDefinitionPrivateRecord", func() storage.Record {
 		return &RevocationRegistryDefinitionPrivateRecord{
 			BaseRecord: &storage.BaseRecord{

@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/di"
 	"github.com/ajna-inc/essi/pkg/core/encoding"
+	coreevents "github.com/ajna-inc/essi/pkg/core/events"
 	"github.com/ajna-inc/essi/pkg/core/wallet"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"
 	"github.com/ajna-inc/essi/pkg/didcomm/modules/connections/services"
@@ -30,6 +32,12 @@ type MessageReceiver struct {
 	httpServer        *http.Server
 	isRunning         bool
 	mutex             sync.RWMutex
+}
+
+// HttpResponse represents a raw HTTP response body and content type
+type HttpResponse struct {
+	Body        []byte
+	ContentType string
 }
 
 // InboundSession represents an inbound transport session
@@ -188,11 +196,15 @@ func (mr *MessageReceiver) handleInboundMessage(w http.ResponseWriter, r *http.R
 
 	// Process the message based on content type
 	contentType := r.Header.Get("Content-Type")
+	ctLower := strings.ToLower(strings.TrimSpace(contentType))
+	if idx := strings.Index(ctLower, ";"); idx != -1 {
+		ctLower = strings.TrimSpace(ctLower[:idx])
+	}
 
 	var response interface{}
 	var statusCode int
 
-	switch contentType {
+	switch ctLower {
 	case "application/didcomm-envelope-enc":
 		response, statusCode = mr.processEncryptedMessage(body)
 	case "application/didcomm-encrypted+json", "application/didcomm+json":
@@ -230,9 +242,25 @@ func (mr *MessageReceiver) handleInboundMessage(w http.ResponseWriter, r *http.R
 	}
 
 	// Send response
+	if hr, ok := response.(*HttpResponse); ok && hr != nil {
+		if hr.ContentType != "" {
+			w.Header().Set("Content-Type", hr.ContentType)
+		} else {
+			w.Header().Set("Content-Type", "application/didcomm-envelope-enc")
+		}
+		w.WriteHeader(statusCode)
+		if len(hr.Body) > 0 {
+			if _, err := w.Write(hr.Body); err != nil {
+				log.Printf("❌ Failed to write raw response: %v", err)
+			}
+		}
+		log.Printf("📤 Sent inline encrypted response: %d", statusCode)
+		return
+	}
+
+	// Default JSON response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-
 	if response != nil {
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			log.Printf("❌ Failed to encode response: %v", err)
@@ -320,6 +348,8 @@ func (mr *MessageReceiver) processDecryptedMessage(ctx *envelopeServices.Decrypt
 		return map[string]string{"error": "invalid message"}, http.StatusBadRequest
 	}
 
+	// Note: message.received event will be emitted after we associate a connection (below)
+
 	// Log encryption metadata
 	if ctx.RecipientKey != nil {
 		log.Printf("🔑 Message decrypted with recipient key: %s", encoding.EncodeBase58(ctx.RecipientKey))
@@ -369,6 +399,26 @@ func (mr *MessageReceiver) processDecryptedMessage(ctx *envelopeServices.Decrypt
 		}
 	}
 
+	// Emit message.received event with correlation metadata once we know associated connection
+	if mr.typedDI != nil {
+		if ebAny, err := mr.typedDI.Resolve(di.TokenEventBus); err == nil {
+			if bus, ok := ebAny.(coreevents.Bus); ok && bus != nil {
+				md := coreevents.EventMetadata{ContextCorrelationId: mr.agentContext.GetCorrelationId()}
+				payload := map[string]interface{}{
+					"type": base.GetType(),
+					"id":   base.GetId(),
+					"connectionId": func() string {
+						if associatedConn != nil {
+							return associatedConn.ID
+						}
+						return ""
+					}(),
+				}
+				bus.PublishWithMetadata(coreevents.EventMessageReceived, payload, md)
+			}
+		}
+	}
+
 	inboundCtx := &InboundMessageContext{
 		Message:      &base,
 		Raw:          raw,
@@ -381,14 +431,75 @@ func (mr *MessageReceiver) processDecryptedMessage(ctx *envelopeServices.Decrypt
 		TypedDI:      mr.typedDI,
 	}
 
-	// Dispatch now handles sending the response via OutboundMessageContext
-	err = mr.dispatcher.Dispatch(inboundCtx)
-	if err != nil {
-		log.Printf("❌ dispatcher error: %v", err)
-		return map[string]string{"error": err.Error()}, http.StatusBadRequest
+	// Use synchronous dispatch to obtain possible outbound message
+	outboundCtx, derr := mr.dispatcher.DispatchSync(inboundCtx)
+	if derr != nil {
+		log.Printf("❌ dispatcher error: %v", derr)
+		return map[string]string{"error": derr.Error()}, http.StatusBadRequest
 	}
 
-	// Dispatcher handles all message sending now, we just return 200 OK
+	// Check if inbound requested return routing
+	wantsReturn := false
+	if inboundCtx.Message != nil {
+		wantsReturn = inboundCtx.Message.HasReturnRoute()
+	}
+
+	if outboundCtx != nil && wantsReturn {
+		// Pack response for the sender key of the inbound message
+		toKeys := []string{}
+		if ctx.SenderKey != nil && len(ctx.SenderKey) > 0 {
+			toKeys = append(toKeys, encoding.EncodeBase58(ctx.SenderKey))
+		}
+		if len(toKeys) == 0 {
+			// No sender key -> cannot inline
+			log.Printf("⚠️ No sender key on inbound message; cannot send inline return-route response")
+		} else {
+			// Try to use authcrypt if we can find our private key matching recipientKey
+			pkgType := envelopeServices.PackageTypeAnoncrypt
+			if ctx.RecipientKey != nil && mr.typedDI != nil {
+				if dep, err := mr.typedDI.Resolve(di.TokenWalletService); err == nil {
+					if ws, ok := dep.(*wallet.WalletService); ok && ws != nil {
+						if keys, kerr := ws.ListKeys(); kerr == nil {
+							for _, k := range keys {
+								if k != nil && len(k.PublicKey) > 0 && bytes.Equal(k.PublicKey, ctx.RecipientKey) {
+									mr.envelopeService.SetSenderKey(k.PrivateKey)
+									pkgType = envelopeServices.PackageTypeAuthcrypt
+									break
+								}
+							}
+						}
+					}
+				}
+			}
+
+			enc, perr := mr.envelopeService.PackMessage(outboundCtx.Message, toKeys, pkgType)
+			if perr != nil {
+				log.Printf("❌ Failed to pack inline response: %v", perr)
+			} else {
+				body, merr := json.Marshal(enc)
+				if merr != nil {
+					log.Printf("❌ Failed to marshal encrypted inline response: %v", merr)
+				} else {
+					return &HttpResponse{Body: body, ContentType: "application/didcomm-envelope-enc"}, http.StatusOK
+				}
+			}
+		}
+	}
+
+	// No inline response or packing failed, send via MessageSender if any
+	if outboundCtx != nil {
+		if mr.typedDI != nil {
+			if senderAny, err := mr.typedDI.Resolve(di.TokenMessageSender); err == nil {
+				if ms, ok := senderAny.(MessageSenderInterface); ok && ms != nil {
+					if err := ms.SendMessage(outboundCtx); err != nil {
+						log.Printf("❌ Failed to send outbound message: %v", err)
+						return map[string]string{"error": err.Error()}, http.StatusBadRequest
+					}
+				}
+			}
+		}
+	}
+
 	return nil, http.StatusOK
 }
 

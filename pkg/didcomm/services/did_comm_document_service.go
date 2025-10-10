@@ -57,6 +57,14 @@ func (s *DidCommDocumentService) ResolveService(ctx *corectx.AgentContext, dm di
 		if se, ok := s.ServiceEndpoint.(string); ok {
 			ep = se
 		}
+		// Support DIDCommMessaging endpoint object with { uri: string, accept?: [] }
+		if ep == "" {
+			if obj, ok := s.ServiceEndpoint.(map[string]interface{}); ok && obj != nil {
+				if uri, ok := obj["uri"].(string); ok {
+					ep = uri
+				}
+			}
+		}
 		if ep == "" || len(s.RecipientKeys) == 0 {
 			continue
 		}

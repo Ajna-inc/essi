@@ -28,7 +28,9 @@ type DidsModule struct {
 // NewDidsModule creates a new DID module with defaults (did:key and did:peer enabled)
 func NewDidsModule(cfg *DidsModuleConfig) *DidsModule {
 	defaultCfg := DidsModuleConfig{EnableDidKey: true, EnableDidPeer: true}
-	if cfg != nil { defaultCfg = *cfg }
+	if cfg != nil {
+		defaultCfg = *cfg
+	}
 	return &DidsModule{cfg: defaultCfg}
 }
 
@@ -38,16 +40,26 @@ func (m *DidsModule) Register(dm di.DependencyManager) error {
 }
 
 func (m *DidsModule) OnInitializeContext(ctx *contextpkg.AgentContext) error {
-    resolver := dids.NewDidResolverService()
-    registrar := dids.NewDidRegistrarService()
-	if m.cfg.EnableDidKey { resolver.RegisterResolver(keyresolver.NewDidKeyResolver()) }
-	if m.cfg.EnableDidPeer { 
+	resolver := dids.NewDidResolverService()
+	registrar := dids.NewDidRegistrarService()
+	if m.cfg.EnableDidKey {
+		resolver.RegisterResolver(keyresolver.NewDidKeyResolver())
+	}
+	if m.cfg.EnableDidPeer {
 		resolver.RegisterResolver(peerresolver.NewDidPeerResolver())
 		registrar.RegisterRegistrar(peerresolver.NewPeerDidRegistrar())
 	}
-	for _, r := range m.cfg.Resolvers { if r != nil { resolver.RegisterResolver(r) } }
-	for _, r := range m.cfg.Registrars { if r != nil { registrar.RegisterRegistrar(r) } }
-	
+	for _, r := range m.cfg.Resolvers {
+		if r != nil {
+			resolver.RegisterResolver(r)
+		}
+	}
+	for _, r := range m.cfg.Registrars {
+		if r != nil {
+			registrar.RegisterRegistrar(r)
+		}
+	}
+
 	// Create DID repository if storage is available
 	var didRepository repository.DidRepository
 	if m.dm != nil {
@@ -59,7 +71,7 @@ func (m *DidsModule) OnInitializeContext(ctx *contextpkg.AgentContext) error {
 			}
 		}
 	}
-	
+
 	// Register typed DidsApi with repository
 	if m.dm != nil {
 		didsApi := api.NewDidsApi(resolver, registrar, didRepository, ctx)
@@ -72,4 +84,3 @@ func (m *DidsModule) OnInitializeContext(ctx *contextpkg.AgentContext) error {
 }
 
 func (m *DidsModule) OnShutdown(ctx *contextpkg.AgentContext) error { return nil }
-

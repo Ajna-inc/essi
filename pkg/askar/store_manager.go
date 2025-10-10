@@ -36,52 +36,52 @@ func (m *AskarStoreManager) ProvisionStore(config *AskarStoreConfig) error {
 	if config == nil {
 		return errors.NewAskarError(errors.ErrCodeInvalidConfig, "store config is required", nil)
 	}
-	
+
 	// Set defaults and validate
 	config.SetDefaults()
 	if err := config.Validate(); err != nil {
 		return errors.NewAskarError(errors.ErrCodeInvalidConfig, err.Error(), err)
 	}
-	
+
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	
+
 	// Check if store already exists
 	if _, exists := m.stores[config.ID]; exists {
 		return errors.ErrStoreAlreadyExists
 	}
-	
+
 	// Get connection string
 	connStr, err := config.Database.GetConnectionString(config.ID)
 	if err != nil {
 		return errors.NewAskarError(errors.ErrCodeInvalidConfig, "failed to get connection string", err)
 	}
-	
+
 	// Create directory if needed for file-based SQLite
 	if config.Database.Type == "sqlite" && !isInMemory(config.Database) {
 		if err := m.ensureDirectoryExists(config.Database); err != nil {
 			return err
 		}
 	}
-	
+
 	// Provision the store
 	store, err := askar.StoreProvision(
 		connStr,
 		config.KeyDerivationMethod,
 		config.Key,
-		"", // default profile
+		"",    // default profile
 		false, // don't recreate if exists
 	)
 	if err != nil {
 		return errors.WrapAskarError(err)
 	}
-	
+
 	// Store the managed store
 	m.stores[config.ID] = &ManagedStore{
 		Store:  store,
 		Config: config,
 	}
-	
+
 	return nil
 }
 
@@ -90,27 +90,27 @@ func (m *AskarStoreManager) OpenStore(config *AskarStoreConfig) (*askar.Store, e
 	if config == nil {
 		return nil, errors.NewAskarError(errors.ErrCodeInvalidConfig, "store config is required", nil)
 	}
-	
+
 	// Set defaults and validate
 	config.SetDefaults()
 	if err := config.Validate(); err != nil {
 		return nil, errors.NewAskarError(errors.ErrCodeInvalidConfig, err.Error(), err)
 	}
-	
+
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	
+
 	// Check if store is already open
 	if managed, exists := m.stores[config.ID]; exists {
 		return managed.Store, nil
 	}
-	
+
 	// Get connection string
 	connStr, err := config.Database.GetConnectionString(config.ID)
 	if err != nil {
 		return nil, errors.NewAskarError(errors.ErrCodeInvalidConfig, "failed to get connection string", err)
 	}
-	
+
 	// Open the store
 	store, err := askar.StoreOpen(
 		connStr,
@@ -121,13 +121,13 @@ func (m *AskarStoreManager) OpenStore(config *AskarStoreConfig) (*askar.Store, e
 	if err != nil {
 		return nil, errors.WrapAskarError(err)
 	}
-	
+
 	// Store the managed store
 	m.stores[config.ID] = &ManagedStore{
 		Store:  store,
 		Config: config,
 	}
-	
+
 	return store, nil
 }
 
@@ -135,12 +135,12 @@ func (m *AskarStoreManager) OpenStore(config *AskarStoreConfig) (*askar.Store, e
 func (m *AskarStoreManager) GetStore(storeID string) (*askar.Store, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	
+
 	managed, exists := m.stores[storeID]
 	if !exists {
 		return nil, errors.ErrStoreNotFound
 	}
-	
+
 	return managed.Store, nil
 }
 
@@ -148,16 +148,16 @@ func (m *AskarStoreManager) GetStore(storeID string) (*askar.Store, error) {
 func (m *AskarStoreManager) CloseStore(storeID string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	
+
 	managed, exists := m.stores[storeID]
 	if !exists {
 		return errors.ErrStoreNotFound
 	}
-	
+
 	if err := managed.Store.Close(); err != nil {
 		return errors.WrapAskarError(err)
 	}
-	
+
 	delete(m.stores, storeID)
 	return nil
 }
@@ -167,7 +167,7 @@ func (m *AskarStoreManager) DeleteStore(config *AskarStoreConfig) error {
 	if config == nil {
 		return errors.NewAskarError(errors.ErrCodeInvalidConfig, "store config is required", nil)
 	}
-	
+
 	// Close the store if it's open
 	m.mutex.Lock()
 	if managed, exists := m.stores[config.ID]; exists {
@@ -178,18 +178,18 @@ func (m *AskarStoreManager) DeleteStore(config *AskarStoreConfig) error {
 		delete(m.stores, config.ID)
 	}
 	m.mutex.Unlock()
-	
+
 	// Get connection string
 	connStr, err := config.Database.GetConnectionString(config.ID)
 	if err != nil {
 		return errors.NewAskarError(errors.ErrCodeInvalidConfig, "failed to get connection string", err)
 	}
-	
+
 	// Remove the store
 	if err := askar.StoreRemove(connStr); err != nil {
 		return errors.WrapAskarError(err)
 	}
-	
+
 	return nil
 }
 
@@ -199,13 +199,13 @@ func (m *AskarStoreManager) WithSession(ctx *context.AgentContext, storeID strin
 	if err != nil {
 		return err
 	}
-	
+
 	session, err := store.Session("")
 	if err != nil {
 		return errors.WrapAskarError(err)
 	}
 	defer session.Close()
-	
+
 	return fn(session)
 }
 
@@ -215,25 +215,25 @@ func (m *AskarStoreManager) WithTransaction(ctx *context.AgentContext, storeID s
 	if err != nil {
 		return err
 	}
-	
+
 	session, err := store.Transaction("")
 	if err != nil {
 		return errors.WrapAskarError(err)
 	}
-	
+
 	// Execute the function
 	if err := fn(session); err != nil {
 		// Rollback on error
 		session.Close()
 		return errors.NewAskarError(errors.ErrCodeTransactionFailed, "transaction failed", err)
 	}
-	
+
 	// Commit the transaction
 	if err := session.Commit(); err != nil {
 		session.Close()
 		return errors.WrapAskarError(err)
 	}
-	
+
 	return nil
 }
 
@@ -241,7 +241,7 @@ func (m *AskarStoreManager) WithTransaction(ctx *context.AgentContext, storeID s
 func (m *AskarStoreManager) IsStoreOpen(storeID string) bool {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	
+
 	_, exists := m.stores[storeID]
 	return exists
 }
@@ -250,7 +250,7 @@ func (m *AskarStoreManager) IsStoreOpen(storeID string) bool {
 func (m *AskarStoreManager) GetOpenStores() []string {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	
+
 	ids := make([]string, 0, len(m.stores))
 	for id := range m.stores {
 		ids = append(ids, id)
@@ -262,7 +262,7 @@ func (m *AskarStoreManager) GetOpenStores() []string {
 func (m *AskarStoreManager) CloseAll() error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	
+
 	var lastErr error
 	for id, managed := range m.stores {
 		if err := managed.Store.Close(); err != nil {
@@ -270,7 +270,7 @@ func (m *AskarStoreManager) CloseAll() error {
 		}
 		delete(m.stores, id)
 	}
-	
+
 	return lastErr
 }
 
@@ -278,20 +278,20 @@ func (m *AskarStoreManager) CloseAll() error {
 func (m *AskarStoreManager) RotateStoreKey(storeID string, newKey string, newKeyMethod askar.StoreKeyMethod) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	
+
 	managed, exists := m.stores[storeID]
 	if !exists {
 		return errors.ErrStoreNotFound
 	}
-	
+
 	if err := managed.Store.Rekey(newKeyMethod, newKey); err != nil {
 		return errors.WrapAskarError(err)
 	}
-	
+
 	// Update the stored configuration
 	managed.Config.Key = newKey
 	managed.Config.KeyDerivationMethod = newKeyMethod
-	
+
 	return nil
 }
 
@@ -301,15 +301,15 @@ func (m *AskarStoreManager) ensureDirectoryExists(dbConfig *AskarDatabaseConfig)
 	if err := mapToStruct(dbConfig.Config, sqliteConfig); err != nil {
 		return errors.NewAskarError(errors.ErrCodeInvalidConfig, "invalid sqlite config", err)
 	}
-	
+
 	if sqliteConfig.Path != "" {
 		dir := filepath.Dir(sqliteConfig.Path)
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			return errors.NewAskarError(errors.ErrCodeStorageOperation, 
+			return errors.NewAskarError(errors.ErrCodeStorageOperation,
 				fmt.Sprintf("failed to create directory %s", dir), err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -318,12 +318,12 @@ func isInMemory(dbConfig *AskarDatabaseConfig) bool {
 	if dbConfig.Type != "sqlite" {
 		return false
 	}
-	
+
 	sqliteConfig := &AskarSqliteConfig{}
 	if err := mapToStruct(dbConfig.Config, sqliteConfig); err != nil {
 		return false
 	}
-	
+
 	return sqliteConfig.InMemory
 }
 
@@ -331,12 +331,12 @@ func isInMemory(dbConfig *AskarDatabaseConfig) bool {
 func (m *AskarStoreManager) GetStoreConfig(storeID string) (*AskarStoreConfig, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	
+
 	managed, exists := m.stores[storeID]
 	if !exists {
 		return nil, errors.ErrStoreNotFound
 	}
-	
+
 	return managed.Config, nil
 }
 
@@ -346,11 +346,11 @@ func (m *AskarStoreManager) CreateProfile(storeID string, profileName string) er
 	if err != nil {
 		return err
 	}
-	
+
 	if err := store.CreateProfile(profileName); err != nil {
 		return errors.WrapAskarError(err)
 	}
-	
+
 	return nil
 }
 
@@ -360,11 +360,11 @@ func (m *AskarStoreManager) RemoveProfile(storeID string, profileName string) er
 	if err != nil {
 		return err
 	}
-	
+
 	if err := store.RemoveProfile(profileName); err != nil {
 		return errors.WrapAskarError(err)
 	}
-	
+
 	return nil
 }
 
@@ -374,11 +374,11 @@ func (m *AskarStoreManager) ListProfiles(storeID string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	profiles, err := store.ListProfiles()
 	if err != nil {
 		return nil, errors.WrapAskarError(err)
 	}
-	
+
 	return profiles, nil
 }

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
+	"time"
 
 	corectx "github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/wallet"
@@ -14,6 +16,7 @@ import (
 	routeMsgs "github.com/ajna-inc/essi/pkg/didcomm/modules/routing/messages"
 	routeRecs "github.com/ajna-inc/essi/pkg/didcomm/modules/routing/records"
 	envsvc "github.com/ajna-inc/essi/pkg/didcomm/services"
+	transport "github.com/ajna-inc/essi/pkg/didcomm/transport"
 )
 
 // Import records package for types
@@ -37,16 +40,35 @@ func (s *MediatorService) ProcessForward(forward *routeMsgs.Forward, inbound *co
 	if forward == nil || forward.Msg == nil {
 		return nil, fmt.Errorf("invalid forward message")
 	}
-	// For MVP: directly deliver the packed message to the connection associated with the thread/recipient
-	// Here we need to determine connection by recipient kid; for now, use the inbound connection as the target
-	if inbound == nil {
-		return nil, fmt.Errorf("no inbound connection context for forward delivery")
+	// Find recipient connection by key from mediation records
+	if s.mediationRepo == nil {
+		return nil, fmt.Errorf("mediation repo unavailable")
 	}
-	// Send raw encrypted package to recipient endpoint
-	log.Printf("📦 Mediator forwarding packed message to %s", inbound.TheirEndpoint)
-	if err := s.postEncrypted(forward.Msg, inbound.TheirEndpoint); err != nil {
+	recs, err := s.mediationRepo.GetAll(s.ctx)
+	if err != nil {
 		return nil, err
 	}
+	var target *routeRecs.MediationRecord
+	for _, r := range recs {
+		for _, k := range r.RecipientKeys {
+			if normalizeBase58(k) == normalizeBase58(forward.To) {
+				target = r
+				break
+			}
+		}
+		if target != nil {
+			break
+		}
+	}
+	if target == nil {
+		// Unknown recipient key; drop silently
+		log.Printf("⚠️ Mediator has no recipient for key: %s", forward.To)
+		return nil, nil
+	}
+	// Queue the message for pickup tied to the recipient connection
+	repo := transport.GetGlobalQueueRepository()
+	repo.Add(&transport.QueuedMessage{ConnectionId: target.ConnectionId, Payload: forward.Msg, CreatedAt: time.Now()})
+	log.Printf("📥 Queued message for recipient connection %s", target.ConnectionId)
 	return nil, nil
 }
 
@@ -126,4 +148,21 @@ func (s *MediatorService) postEncrypted(payload *envsvc.EncryptedMessage, endpoi
 		return fmt.Errorf("http %d", resp.StatusCode)
 	}
 	return nil
+}
+
+// normalizeBase58 returns base58 kid from did:key or base58 input (best-effort)
+func normalizeBase58(k string) string {
+	if k == "" {
+		return ""
+	}
+	if strings.HasPrefix(k, "did:key:") {
+		// did:key:z.. fingerprint; strip prefix 'did:key:' and leading 'z' multibase
+		msid := strings.TrimPrefix(k, "did:key:")
+		if strings.HasPrefix(msid, "z") {
+			// keep as fingerprint; upper layers compare fingerprints too
+			return msid
+		}
+		return msid
+	}
+	return k
 }

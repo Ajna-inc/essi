@@ -109,4 +109,3 @@ func (s *SchemaOperations) GetSchema(schemaID string) (*registry.Schema, error) 
 	// For now, we'll return an error as it's not fully implemented
 	return nil, fmt.Errorf("GetSchema not implemented yet")
 }
-

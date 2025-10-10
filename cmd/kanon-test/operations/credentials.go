@@ -37,7 +37,7 @@ type CredentialDefinitionConfig struct {
 func (c *CredentialOperations) RegisterCredentialDefinition(config *CredentialDefinitionConfig) (string, error) {
 	startTime := time.Now()
 	operationName := "register_cred_def"
-	
+
 	defer func() {
 		duration := time.Since(startTime)
 		if c.metrics != nil {
@@ -69,7 +69,7 @@ func (c *CredentialOperations) RegisterCredentialDefinition(config *CredentialDe
 		},
 	})
 	callDuration := time.Since(callStart)
-	
+
 	if c.metrics != nil {
 		c.metrics.Record("cred_def_api_call", callDuration)
 	}
@@ -121,4 +121,3 @@ func (c *CredentialOperations) OfferCredential(connectionID, credDefID string, a
 	log.Printf("✅ Credential offer sent successfully")
 	return nil
 }
-

@@ -3,7 +3,7 @@ package services
 import (
 	"fmt"
 	"log"
-	
+
 	"github.com/ajna-inc/essi/pkg/core/context"
 	connmessages "github.com/ajna-inc/essi/pkg/didcomm/modules/connections/messages"
 )
@@ -28,27 +28,27 @@ func (service *TrustPingService) CreatePing(
 	config *TrustPingConfig,
 ) (*connmessages.TrustPingMessage, error) {
 	log.Printf("🏓 Creating trust ping for connection %s", connection.ID)
-	
+
 	comment := "ping"
 	if config != nil && config.Comment != "" {
 		comment = config.Comment
 	}
-	
+
 	responseRequested := true
 	if config != nil {
 		responseRequested = config.ResponseRequested
 	}
-	
+
 	// Create trust ping message
 	ping := connmessages.NewTrustPingMessage(comment, responseRequested)
-	
+
 	// Set threading if we have a thread context
 	if connection.Tags != nil && connection.Tags["threadId"] != "" {
 		ping.SetThreadId(connection.Tags["threadId"])
 	}
-	
+
 	log.Printf("✅ Created trust ping message with comment: %s", comment)
-	
+
 	return ping, nil
 }
 
@@ -59,12 +59,12 @@ func (service *TrustPingService) CreatePingResponse(
 	connection *ConnectionRecord,
 ) (*connmessages.TrustPingResponseMessage, error) {
 	log.Printf("🏓 Creating trust ping response for connection %s", connection.ID)
-	
+
 	// Create response using the factory method from the ping message
 	response := connmessages.NewTrustPingResponseFromPing(ping)
-	
+
 	log.Printf("✅ Created trust ping response")
-	
+
 	return response, nil
 }
 
@@ -74,9 +74,9 @@ func (service *TrustPingService) ProcessPing(
 	ping *connmessages.TrustPingMessage,
 	connection *ConnectionRecord,
 ) (*connmessages.TrustPingResponseMessage, error) {
-	log.Printf("🏓 Processing trust ping from connection %s (response_requested=%v)", 
+	log.Printf("🏓 Processing trust ping from connection %s (response_requested=%v)",
 		connection.ID, ping.GetResponseRequested())
-	
+
 	// Update connection state if needed
 	if connection.State != ConnectionStateComplete {
 		connection.State = ConnectionStateComplete
@@ -86,7 +86,7 @@ func (service *TrustPingService) ProcessPing(
 			log.Printf("✅ Connection %s marked as complete after trust ping", connection.ID)
 		}
 	}
-	
+
 	// Create response if requested
 	if ping.GetResponseRequested() {
 		response, err := service.CreatePingResponse(agentContext, ping, connection)
@@ -95,7 +95,7 @@ func (service *TrustPingService) ProcessPing(
 		}
 		return response, nil
 	}
-	
+
 	return nil, nil
 }
 
@@ -106,7 +106,7 @@ func (service *TrustPingService) ProcessPingResponse(
 	connection *ConnectionRecord,
 ) error {
 	log.Printf("🏓✅ Processing trust ping response from connection %s", connection.ID)
-	
+
 	// Update connection state to complete if not already
 	if connection.State != ConnectionStateComplete {
 		connection.State = ConnectionStateComplete
@@ -117,7 +117,7 @@ func (service *TrustPingService) ProcessPingResponse(
 			log.Printf("✅ Connection %s marked as complete after ping response", connection.ID)
 		}
 	}
-	
+
 	return nil
 }
 

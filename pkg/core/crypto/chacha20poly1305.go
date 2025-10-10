@@ -29,7 +29,6 @@ func NewChaCha20Poly1305(key []byte) (*ChaCha20Poly1305, error) {
 	}, nil
 }
 
-
 // EncryptInput represents input for ChaCha20-Poly1305 encryption
 type EncryptInput struct {
 	Plaintext []byte `json:"plaintext"` // Data to encrypt
@@ -82,7 +81,6 @@ func (c *ChaCha20Poly1305) Decrypt(input DecryptInput) (*DecryptOutput, error) {
 		Plaintext: plaintext,
 	}, nil
 }
-
 
 // EncryptChaCha20Poly1305 encrypts data using ChaCha20-Poly1305
 func EncryptChaCha20Poly1305(key, plaintext, aad []byte) (nonce, ciphertext []byte, err error) {

@@ -5,9 +5,9 @@ import (
 	"log"
 	"strings"
 
+	"github.com/ajna-inc/essi/pkg/core/common"
 	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/di"
-	"github.com/ajna-inc/essi/pkg/core/common"
 	"github.com/ajna-inc/essi/pkg/core/utils"
 	"github.com/ajna-inc/essi/pkg/didcomm/decorators/service"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"

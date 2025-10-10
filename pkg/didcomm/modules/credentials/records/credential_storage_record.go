@@ -17,7 +17,7 @@ type CredentialStorageRecord struct {
 func NewCredentialStorageRecord(cr *CredentialRecord) *CredentialStorageRecord {
 	return &CredentialStorageRecord{
 		CredentialRecord: cr,
-		tags:            make(map[string]string),
+		tags:             make(map[string]string),
 	}
 }
 
@@ -41,7 +41,7 @@ func (r *CredentialStorageRecord) GetTags() map[string]string {
 	if r.tags == nil {
 		r.tags = make(map[string]string)
 	}
-	
+
 	// Build tags from CredentialRecord fields - matches credo-ts getTags()
 	r.tags["threadId"] = r.ThreadId
 	if r.ConnectionId != "" {
@@ -49,14 +49,14 @@ func (r *CredentialStorageRecord) GetTags() map[string]string {
 	}
 	r.tags["state"] = string(r.State)
 	r.tags["role"] = r.Role
-	
+
 	// Add any additional tags from the BaseRecord Tags field
 	if r.BaseRecord != nil && r.BaseRecord.Tags != nil {
 		for k, v := range r.BaseRecord.Tags {
 			r.tags[k] = v
 		}
 	}
-	
+
 	return r.tags
 }
 
@@ -110,17 +110,17 @@ func (r *CredentialStorageRecord) Clone() storage.Record {
 	data, _ := json.Marshal(r.CredentialRecord)
 	var cloned CredentialRecord
 	json.Unmarshal(data, &cloned)
-	
+
 	newRecord := &CredentialStorageRecord{
 		CredentialRecord: &cloned,
-		tags:            make(map[string]string),
+		tags:             make(map[string]string),
 	}
-	
+
 	// Copy tags
 	for k, v := range r.tags {
 		newRecord.tags[k] = v
 	}
-	
+
 	return newRecord
 }
 

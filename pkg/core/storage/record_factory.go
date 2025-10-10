@@ -24,11 +24,11 @@ func RegisterRecordType(typeName string, constructor RecordConstructor) {
 func CreateRecord(typeName string) (Record, error) {
 	registryMutex.RLock()
 	defer registryMutex.RUnlock()
-	
+
 	if constructor, exists := recordRegistry[typeName]; exists {
 		return constructor(), nil
 	}
-	
+
 	// Fallback to BaseRecord if type not registered
 	// This maintains backward compatibility
 	return NewBaseRecord(typeName), nil
@@ -38,7 +38,7 @@ func CreateRecord(typeName string) (Record, error) {
 func GetRegisteredTypes() []string {
 	registryMutex.RLock()
 	defer registryMutex.RUnlock()
-	
+
 	types := make([]string, 0, len(recordRegistry))
 	for typeName := range recordRegistry {
 		types = append(types, typeName)
@@ -50,7 +50,7 @@ func GetRegisteredTypes() []string {
 func RecordTypeRegistered(typeName string) bool {
 	registryMutex.RLock()
 	defer registryMutex.RUnlock()
-	
+
 	_, exists := recordRegistry[typeName]
 	return exists
 }

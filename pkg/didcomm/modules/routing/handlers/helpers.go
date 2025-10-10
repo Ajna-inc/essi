@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"github.com/ajna-inc/essi/pkg/core/di"
-	"github.com/ajna-inc/essi/pkg/didcomm/transport"
 	routesvc "github.com/ajna-inc/essi/pkg/didcomm/modules/routing/services"
+	"github.com/ajna-inc/essi/pkg/didcomm/transport"
 )
 
 // GetMediatorService resolves the mediator service from the inbound context (DI)

@@ -57,14 +57,3 @@ type V2MessagesReceived struct {
 func NewV2MessagesReceived(ids []string) *V2MessagesReceived {
 	return &V2MessagesReceived{BaseMessage: base.NewBaseMessage(V2MessagesReceivedType), MessageIdList: ids}
 }
-
-
-
-
-
-
-
-
-
-
-

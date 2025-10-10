@@ -59,7 +59,7 @@ func (p *ProofOperations) CreateProof() error {
 
 	// Get credentials for the proof request
 	log.Println("🔍 Finding credentials for proof request...")
-	
+
 	credOptions := &services.GetCredentialsForProofRequestOptions{
 		ProofRequest: proofRequest,
 	}
@@ -87,8 +87,8 @@ func (p *ProofOperations) CreateProof() error {
 
 	// Select credentials automatically
 	selectedCredentials := map[string]interface{}{
-		"attributes": map[string]interface{}{},
-		"predicates": map[string]interface{}{},
+		"attributes":             map[string]interface{}{},
+		"predicates":             map[string]interface{}{},
 		"selfAttestedAttributes": map[string]interface{}{},
 	}
 
@@ -129,7 +129,7 @@ func (p *ProofOperations) CreateProof() error {
 
 	// Create proof
 	log.Println("🔐 Creating proof presentation...")
-	
+
 	proofOptions := &services.CreateProofOptions{
 		ProofRequest:          proofRequest,
 		SelectedCredentials:   selectedCredentials,
@@ -144,7 +144,7 @@ func (p *ProofOperations) CreateProof() error {
 	}
 
 	log.Printf("✅ Proof presentation created successfully")
-	
+
 	// Log proof structure
 	if proof.Proof != nil {
 		if _, ok := proof.Proof["proof"]; ok {
@@ -177,7 +177,7 @@ func (p *ProofOperations) ExecuteProofFlow(connectionId string) error {
 	// 1. Send the proof request over the connection
 	// 2. Receive the proof presentation
 	// 3. Verify the proof cryptographically
-	
+
 	log.Println("✅ Proof flow completed successfully")
 	log.Println("   Note: Full DIDComm proof exchange requires additional protocol implementation")
 

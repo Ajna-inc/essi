@@ -5,6 +5,7 @@ import (
 
 	contextpkg "github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/di"
+	coreevents "github.com/ajna-inc/essi/pkg/core/events"
 	"github.com/ajna-inc/essi/pkg/core/logger"
 	corestorage "github.com/ajna-inc/essi/pkg/core/storage"
 	"github.com/ajna-inc/essi/pkg/core/wallet"
@@ -12,6 +13,9 @@ import (
 	"github.com/ajna-inc/essi/pkg/didcomm/modules/connections"
 	connservices "github.com/ajna-inc/essi/pkg/didcomm/modules/connections/services"
 	"github.com/ajna-inc/essi/pkg/didcomm/modules/oob"
+	routeRecs "github.com/ajna-inc/essi/pkg/didcomm/modules/routing/records"
+	routerepo "github.com/ajna-inc/essi/pkg/didcomm/modules/routing/repository"
+	routesvc "github.com/ajna-inc/essi/pkg/didcomm/modules/routing/services"
 	"github.com/ajna-inc/essi/pkg/didcomm/registrations"
 	"github.com/ajna-inc/essi/pkg/didcomm/services"
 	transport "github.com/ajna-inc/essi/pkg/didcomm/transport"
@@ -101,6 +105,57 @@ func (m *DidCommModule) Register(dm di.DependencyManager) error {
 		es := services.NewEnvelopeService(agentCtx)
 		es.SetTypedDI(dm)
 		return es, nil
+	})
+	// MediationRepository
+	dm.RegisterSingleton(di.TokenMediationRepository, func(dm di.DependencyManager) (any, error) {
+		any, err := dm.Resolve(di.TokenStorageService)
+		if err != nil {
+			return nil, err
+		}
+		storage, ok := any.(corestorage.StorageService)
+		if !ok {
+			return nil, fmt.Errorf("StorageService missing")
+		}
+		ebAny, _ := dm.Resolve(di.TokenEventBusService)
+		bus, _ := ebAny.(coreevents.Bus)
+		// Create repository
+		repo := routerepo.NewMediationRepository(storage, bus)
+		// Ensure MediationRecord type is registered (via records init)
+		_ = routeRecs.MediationRecord{}
+		return repo, nil
+	})
+	// MediatorService
+	dm.RegisterSingleton(di.TokenMediatorService, func(dm di.DependencyManager) (any, error) {
+		agentCtx, err := di.ResolveAs[*contextpkg.AgentContext](dm, di.TokenAgentContext)
+		if err != nil {
+			return nil, err
+		}
+		connAny, _ := dm.Resolve(di.TokenConnectionService)
+		envAny, _ := dm.Resolve(di.TokenEnvelopeService)
+		walAny, _ := dm.Resolve(di.TokenWalletService)
+		repoAny, _ := dm.Resolve(di.TokenMediationRepository)
+		connSvc, _ := connAny.(*connservices.ConnectionService)
+		envSvc, _ := envAny.(*services.EnvelopeService)
+		walSvc, _ := walAny.(*wallet.WalletService)
+		repo, _ := repoAny.(routeRecs.Repository)
+		if connSvc == nil || envSvc == nil || walSvc == nil || repo == nil {
+			return nil, fmt.Errorf("dependencies missing for MediatorService")
+		}
+		// Use storage-backed queue repository for mediator pickup
+		if storAny, err := dm.Resolve(di.TokenStorageService); err == nil {
+			if store, ok := storAny.(corestorage.StorageService); ok && store != nil {
+				transport.SetGlobalQueueRepository(transport.NewStorageQueueRepository(store))
+			}
+		}
+		return routesvc.NewMediatorService(agentCtx, connSvc, envSvc, walSvc, repo), nil
+	})
+	// MediationRecipientApi
+	dm.RegisterSingleton(di.TokenMediationRecipientApi, func(dm di.DependencyManager) (any, error) {
+		agentCtx, err := di.ResolveAs[*contextpkg.AgentContext](dm, di.TokenAgentContext)
+		if err != nil {
+			return nil, err
+		}
+		return routesvc.NewMediationRecipientApi(agentCtx, dm), nil
 	})
 	// WalletService
 	dm.RegisterSingleton(di.TokenWalletService, func(dm di.DependencyManager) (any, error) {

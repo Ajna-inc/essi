@@ -30,14 +30,3 @@ type V1Batch struct {
 	*base.BaseMessage
 	Messages []V1BatchAttachment `json:"messages~attach"`
 }
-
-
-
-
-
-
-
-
-
-
-

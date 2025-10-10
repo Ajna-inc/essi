@@ -3,9 +3,9 @@ package handlers
 import (
 	"fmt"
 
+	"github.com/ajna-inc/essi/pkg/core/common"
 	coreevents "github.com/ajna-inc/essi/pkg/core/events"
 	"github.com/ajna-inc/essi/pkg/core/logger"
-	"github.com/ajna-inc/essi/pkg/core/common"
 	"github.com/ajna-inc/essi/pkg/core/wallet"
 	"github.com/ajna-inc/essi/pkg/didcomm/decorators/signature"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"
@@ -360,4 +360,3 @@ func ConnectionAckHandlerFunc(ctx *transport.InboundMessageContext) (*models.Out
 	// No response needed for ACK
 	return nil, nil
 }
-

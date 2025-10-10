@@ -54,18 +54,18 @@ func WrapAskarError(err error) error {
 	if err == nil {
 		return nil
 	}
-	
+
 	// Check if it's already our error type
 	if askarErr, ok := err.(*AskarError); ok {
 		return askarErr
 	}
-	
+
 	// Check if it's an askar-go error
 	if askarErr, ok := err.(*askarerrors.AskarError); ok {
 		code := mapAskarErrorCode(askarErr.Code)
 		return NewAskarError(code, askarErr.Message, askarErr)
 	}
-	
+
 	// Generic error
 	return NewAskarError(ErrCodeStorageOperation, err.Error(), err)
 }

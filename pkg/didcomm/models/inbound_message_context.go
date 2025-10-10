@@ -2,7 +2,7 @@ package models
 
 import (
 	"time"
-	
+
 	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/di"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"

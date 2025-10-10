@@ -39,22 +39,22 @@ func NewIssueCredentialV2Credential() *IssueCredentialV2Credential {
 func (m *IssueCredentialV2Credential) ToJSON() ([]byte, error) {
 	// Create a map to combine BaseMessage fields with credential-specific fields
 	result := make(map[string]interface{})
-	
+
 	// First get BaseMessage fields
 	baseJSON, err := m.BaseMessage.ToJSON()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Unmarshal BaseMessage to map
 	if err := json.Unmarshal(baseJSON, &result); err != nil {
 		return nil, err
 	}
-	
+
 	// Add credential-specific fields
 	result["formats"] = m.Formats
 	result["credentials~attach"] = m.CredentialsAttach
-	
+
 	// Marshal the complete map
 	return json.Marshal(result)
 }

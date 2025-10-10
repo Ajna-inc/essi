@@ -13,6 +13,7 @@ import (
 	"github.com/ajna-inc/essi/pkg/core/di"
 	"github.com/ajna-inc/essi/pkg/core/encoding"
 	"github.com/ajna-inc/essi/pkg/core/events"
+	coreevents "github.com/ajna-inc/essi/pkg/core/events"
 	"github.com/ajna-inc/essi/pkg/core/wallet"
 	didcommmodule "github.com/ajna-inc/essi/pkg/didcomm"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"
@@ -472,6 +473,48 @@ func (a *Agent) RequestMediation(connectionId string) error {
 		AssociatedRecord: nil,
 	})
 	return a.messageSender.SendMessage(outboundCtx)
+}
+
+// RequestMediationAndAwaitGrant sends a mediate-request and waits until a mediate-grant is received or timeout.
+// Parity helper with Credo-TS DidCommMediationRecipientApi.requestAndAwaitGrant.
+func (a *Agent) RequestMediationAndAwaitGrant(connectionId string, timeout time.Duration) error {
+	if err := a.RequestMediation(connectionId); err != nil {
+		return err
+	}
+	// Wait for message.received with mediate-grant type
+	var bus coreevents.Bus
+	if a.diManager != nil {
+		if any, err := a.diManager.Resolve(di.TokenEventBusService); err == nil {
+			bus, _ = any.(coreevents.Bus)
+		}
+	}
+	if bus == nil {
+		return fmt.Errorf("event bus not available")
+	}
+	ch := make(chan struct{}, 1)
+	unsub := bus.Subscribe(coreevents.EventMessageReceived, func(ev events.Event) {
+		if m, ok := ev.Data.(map[string]interface{}); ok {
+			if tp, _ := m["type"].(string); tp == routingmessages.MediationGrantType {
+				select {
+				case ch <- struct{}{}:
+				default:
+				}
+			}
+		}
+	})
+	defer unsub()
+	select {
+	case <-ch:
+		return nil
+	case <-time.After(timeout):
+		return fmt.Errorf("timeout waiting for mediation grant")
+	}
+}
+
+// StartPickupV1Loop starts a background pickup v1 loop (RFC 0212) for the given connection.
+// Mirrors Credo-TS mediator pickup strategy behavior.
+func (a *Agent) StartPickupV1Loop(connectionId string, batchSize int, intervalSeconds int) {
+	go a.startPickupV1(connectionId, batchSize, intervalSeconds)
 }
 
 // SendKeylistUpdate notifies mediator of a new recipient key (recipient role)

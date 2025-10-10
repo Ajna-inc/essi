@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ajna-inc/essi/pkg/core/common"
 	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/di"
 	"github.com/ajna-inc/essi/pkg/core/logger"
 	"github.com/ajna-inc/essi/pkg/core/storage"
-	"github.com/ajna-inc/essi/pkg/core/common"
 	"github.com/ajna-inc/essi/pkg/core/wallet"
 	jws "github.com/ajna-inc/essi/pkg/didcomm/crypto/jws"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"
@@ -46,31 +46,92 @@ func (protocol *DidExchangeProtocol) CreateRequest(
 		return nil, nil, fmt.Errorf("failed to create key for DID Exchange: %w", err)
 	}
 
-	// Create connection record
-	connectionId := common.GenerateUUID()
-	connectionRecord := &ConnectionRecord{
-		BaseRecord: &storage.BaseRecord{
-			ID:   connectionId,
-			Type: "ConnectionRecord",
-			Tags: make(map[string]string),
-		},
-		State:    ConnectionStateInvited,
-		Role:     "requester", // DID Exchange requester role
-		Protocol: "https://didcomm.org/didexchange/1.1",
-		MyKeyId:  ourKey.Id,
-	}
+    // Create connection record
+    connectionId := common.GenerateUUID()
+    connectionRecord := &ConnectionRecord{
+        BaseRecord: &storage.BaseRecord{
+            ID:   connectionId,
+            Type: "ConnectionRecord",
+            Tags: make(map[string]string),
+        },
+        State:    ConnectionStateInvited,
+        Role:     "requester", // DID Exchange requester role
+        Protocol: "https://didcomm.org/didexchange/1.1",
+        MyKeyId:  ourKey.Id,
+    }
 
-	// Create DID Exchange request message
-	request := &DidExchangeRequestMessage{
-		BaseMessage: messages.NewBaseMessage("https://didcomm.org/didexchange/1.1/request"),
-		Label:       config.Label,
-	}
+    // Create DID Exchange request message
+    request := &DidExchangeRequestMessage{
+        BaseMessage: messages.NewBaseMessage("https://didcomm.org/didexchange/1.1/request"),
+        Label:       config.Label,
+    }
 
-	request.SetThreadId(request.GetId())
+    request.SetThreadId(request.GetId())
+    // Persist thread id on connection record for correlation
+    if connectionRecord.Tags == nil { connectionRecord.Tags = map[string]string{} }
+    connectionRecord.Tags["threadId"] = request.GetThreadId()
 
-	logger.GetDefaultLogger().Infof("✅ Created DID Exchange request with ID: %s", request.GetId())
+    // Build our DID and attach DIDDoc (signed when possible), mirroring CreateResponse
+    // Set connectionRecord.Did and request.Did so the responder can resolve our service
+    // Create our DID Document
+    endpoint := ""
+    if protocol.connectionService != nil {
+        endpoint = protocol.connectionService.GetDefaultServiceEndpoint()
+    }
+    doc := peer.CreatePeerDidDocument(ourKey.PublicKey, endpoint)
+    // Prefer peer did numalgo1 for compactness here
+    if did, err := peer.CreatePeerDid1(doc); err == nil && did != "" {
+        doc.Id = did
+        connectionRecord.Did = did
+        request.Did = did
+    }
+    // Ensure DID is present in AdditionalFields for serialization
+    if request.BaseMessage.AdditionalFields == nil { request.BaseMessage.AdditionalFields = make(map[string]interface{}) }
+    if request.Did != "" { request.BaseMessage.AdditionalFields["did"] = request.Did }
+    if config.Label != "" { request.BaseMessage.AdditionalFields["label"] = config.Label }
+    // Create did_doc~attach (signed if JwsService available)
+    if protocol.walletService != nil && connectionRecord.MyKeyId != "" {
+        fingerprint, _ := peer.Ed25519Fingerprint(ourKey.PublicKey)
+        kid := "did:key:" + fingerprint
+        var att interface{}
+        if agentContext != nil && agentContext.DependencyManager != nil {
+            if dm, ok := agentContext.DependencyManager.(di.DependencyManager); ok {
+                if any, rerr := dm.Resolve(di.TokenJwsService); rerr == nil {
+                    if jwsSvc, ok := any.(*jws.JwsService); ok && jwsSvc != nil {
+                        if a, aerr := jwsSvc.CreateSignedAttachment(agentContext, doc, connectionRecord.MyKeyId, kid); aerr == nil {
+                            att = a
+                        }
+                    }
+                }
+            }
+        }
+        if att != nil {
+            if request.BaseMessage.AdditionalFields == nil {
+                request.BaseMessage.AdditionalFields = make(map[string]interface{})
+            }
+            request.BaseMessage.AdditionalFields["did_doc~attach"] = att
+        } else {
+            // Fallback to unsigned attach
+            if b, mErr := json.Marshal(doc); mErr == nil {
+                b64 := base64.RawURLEncoding.EncodeToString(b)
+                attach := map[string]interface{}{
+                    "@id":       common.GenerateUUID(),
+                    "mime-type": "application/json",
+                    "data": map[string]interface{}{
+                        "base64": b64,
+                    },
+                }
+                if request.BaseMessage.AdditionalFields == nil {
+                    request.BaseMessage.AdditionalFields = make(map[string]interface{})
+                }
+                request.BaseMessage.AdditionalFields["did_doc~attach"] = attach
+            }
+        }
+    }
 
-	return request, connectionRecord, nil
+    logger.GetDefaultLogger().Infof("✅ Created DID Exchange request with ID: %s", request.GetId())
+
+    return request, connectionRecord, nil
 }
 
 // CreateResponse creates a DID Exchange response message

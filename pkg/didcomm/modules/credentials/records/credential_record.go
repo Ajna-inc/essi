@@ -2,7 +2,7 @@ package records
 
 import (
 	"encoding/json"
-	
+
 	"github.com/ajna-inc/essi/pkg/core/storage"
 )
 
@@ -45,14 +45,14 @@ type CredentialRecord struct {
 	RequestMetadata map[string]interface{} `json:"requestMetadata,omitempty"`
 	// Store preview attributes (raw values) for compatibility with TS
 	// key -> raw value; encoding can be derived as needed
-	PreviewAttributes map[string]string        `json:"previewAttributes,omitempty"`
+	PreviewAttributes map[string]string      `json:"previewAttributes,omitempty"`
 	OfferPayload      map[string]interface{} `json:"offerPayload,omitempty"`
 	// Auto-accept configuration for this credential exchange
 	AutoAcceptCredential AutoAcceptCredential `json:"autoAcceptCredential,omitempty"`
 	// Store credential attributes for validation
 	CredentialAttributes map[string]string `json:"credentialAttributes,omitempty"`
 	// Revocation support
-	RevocationRegistryId string `json:"revocationRegistryId,omitempty"`
+	RevocationRegistryId   string `json:"revocationRegistryId,omitempty"`
 	CredentialRevocationId string `json:"credentialRevocationId,omitempty"`
 }
 

@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ajna-inc/essi/pkg/dids"
-	peer "github.com/ajna-inc/essi/pkg/dids/methods/peer"
 	"github.com/ajna-inc/essi/pkg/core/encoding"
 	"github.com/ajna-inc/essi/pkg/core/utils"
 	"github.com/ajna-inc/essi/pkg/didcomm/decorators/signature"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"
+	"github.com/ajna-inc/essi/pkg/dids"
+	peer "github.com/ajna-inc/essi/pkg/dids/methods/peer"
 )
 
 // ConnectionResponseMessage represents a connection response
@@ -367,7 +367,7 @@ func createDidDocumentForPeerDid(peerDid string, publicKey []byte, serviceEndpoi
 			Type:            dids.ServiceTypeDIDComm,
 			ServiceEndpoint: serviceEndpoint,
 			// recipientKeys should reference the verification method id per Aries 0160
-			RecipientKeys:   []string{vmId},
+			RecipientKeys: []string{vmId},
 		}
 		didDoc.AddService(service)
 	}

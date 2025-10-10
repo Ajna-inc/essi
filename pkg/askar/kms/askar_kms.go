@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/Ajna-inc/askar-go"
 	askarerrors "github.com/ajna-inc/essi/pkg/askar/errors"
 	"github.com/ajna-inc/essi/pkg/core/context"
+	"github.com/google/uuid"
 )
 
 // AskarKeyManagementService provides key management using Askar
@@ -37,22 +37,22 @@ func (kms *AskarKeyManagementService) CreateKey(ctx *context.AgentContext, param
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Generate key ID
 	keyID := fmt.Sprintf("key-%s-%s", params.Type, uuid.New().String())
-	
+
 	var key *Key
 	err = kms.storeManager.WithTransaction(ctx, kms.storeID, func(session *askar.Session) error {
 		var askarKey *askar.Key
 		var genErr error
-		
+
 		// Generate the key
 		if len(params.Seed) > 0 {
 			askarKey, genErr = askar.KeyFromSeed(algorithm, params.Seed, "")
 		} else {
 			askarKey, genErr = askar.GenerateKey(algorithm, false)
 		}
-		
+
 		if genErr != nil {
 			return &KeyError{
 				Code:    "KEY_GENERATION_FAILED",
@@ -61,7 +61,7 @@ func (kms *AskarKeyManagementService) CreateKey(ctx *context.AgentContext, param
 			}
 		}
 		// Note: askarKey is automatically freed by Go's garbage collector with finalizer
-		
+
 		publicKey, err := askarKey.GetPublicBytes()
 		if err != nil {
 			return &KeyError{
@@ -70,7 +70,7 @@ func (kms *AskarKeyManagementService) CreateKey(ctx *context.AgentContext, param
 				Cause:   err,
 			}
 		}
-		
+
 		now := time.Now()
 		key = &Key{
 			ID:        keyID,
@@ -81,19 +81,19 @@ func (kms *AskarKeyManagementService) CreateKey(ctx *context.AgentContext, param
 			UpdatedAt: now,
 			Tags:      params.Metadata,
 		}
-		
+
 		// Store the key in Askar
 		keyJSON, err := json.Marshal(key)
 		if err != nil {
 			return err
 		}
-		
+
 		// Store key metadata
 		err = session.InsertKey(
-			askarKey,           // key
-			keyID,              // name
-			string(keyJSON),    // metadata
-			nil,                // tags
+			askarKey,        // key
+			keyID,           // name
+			string(keyJSON), // metadata
+			nil,             // tags
 		)
 		if err != nil {
 			return &KeyError{
@@ -102,14 +102,14 @@ func (kms *AskarKeyManagementService) CreateKey(ctx *context.AgentContext, param
 				Cause:   err,
 			}
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return key, nil
 }
 
@@ -119,15 +119,15 @@ func (kms *AskarKeyManagementService) ImportKey(ctx *context.AgentContext, param
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Generate key ID
 	keyID := fmt.Sprintf("key-%s-%s", params.Type, uuid.New().String())
-	
+
 	var key *Key
 	err = kms.storeManager.WithTransaction(ctx, kms.storeID, func(session *askar.Session) error {
 		var askarKey *askar.Key
 		var importErr error
-		
+
 		// Import the key based on format
 		if params.JWK != nil {
 			// Import from JWK
@@ -144,7 +144,7 @@ func (kms *AskarKeyManagementService) ImportKey(ctx *context.AgentContext, param
 				Message: "no key data provided for import",
 			}
 		}
-		
+
 		if importErr != nil {
 			return &KeyError{
 				Code:    "KEY_IMPORT_FAILED",
@@ -153,13 +153,13 @@ func (kms *AskarKeyManagementService) ImportKey(ctx *context.AgentContext, param
 			}
 		}
 		// Note: askarKey is automatically freed by Go's garbage collector with finalizer
-		
+
 		publicKey, err := askarKey.GetPublicBytes()
 		if err != nil {
 			// Key might be symmetric, that's ok
 			publicKey = nil
 		}
-		
+
 		now := time.Now()
 		key = &Key{
 			ID:        keyID,
@@ -170,19 +170,19 @@ func (kms *AskarKeyManagementService) ImportKey(ctx *context.AgentContext, param
 			UpdatedAt: now,
 			Tags:      params.Metadata,
 		}
-		
+
 		// Store the key in Askar
 		keyJSON, err := json.Marshal(key)
 		if err != nil {
 			return err
 		}
-		
+
 		// Store key
 		err = session.InsertKey(
-			askarKey,           // key
-			keyID,              // name
-			string(keyJSON),    // metadata
-			nil,                // tags
+			askarKey,        // key
+			keyID,           // name
+			string(keyJSON), // metadata
+			nil,             // tags
 		)
 		if err != nil {
 			return &KeyError{
@@ -191,21 +191,21 @@ func (kms *AskarKeyManagementService) ImportKey(ctx *context.AgentContext, param
 				Cause:   err,
 			}
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return key, nil
 }
 
 // GetKey retrieves a key by ID
 func (kms *AskarKeyManagementService) GetKey(ctx *context.AgentContext, keyID string) (*Key, error) {
 	var key *Key
-	
+
 	err := kms.storeManager.WithSession(ctx, kms.storeID, func(session *askar.Session) error {
 		keyEntry, err := session.FetchKey(keyID, false)
 		if err != nil {
@@ -218,7 +218,7 @@ func (kms *AskarKeyManagementService) GetKey(ctx *context.AgentContext, keyID st
 			}
 		}
 		// Note: keyEntry is automatically cleaned up
-		
+
 		// Parse key metadata from the metadata field
 		key = &Key{}
 		if keyEntry.Metadata != "" {
@@ -226,14 +226,14 @@ func (kms *AskarKeyManagementService) GetKey(ctx *context.AgentContext, keyID st
 				return err
 			}
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return key, nil
 }
 
@@ -250,14 +250,14 @@ func (kms *AskarKeyManagementService) DeleteKey(ctx *context.AgentContext, keyID
 		}
 		return nil
 	})
-	
+
 	return askarerrors.WrapAskarError(err)
 }
 
 // Sign creates a digital signature
 func (kms *AskarKeyManagementService) Sign(ctx *context.AgentContext, params SignParams) ([]byte, error) {
 	var signature []byte
-	
+
 	err := kms.storeManager.WithSession(ctx, kms.storeID, func(session *askar.Session) error {
 		keyEntry, err := session.FetchKey(params.KeyID, false)
 		if err != nil {
@@ -274,7 +274,7 @@ func (kms *AskarKeyManagementService) Sign(ctx *context.AgentContext, params Sig
 		if err != nil {
 			return err
 		}
-		
+
 		var sigAlg askar.SignatureAlgorithm
 		if params.Algorithm != "" {
 			sigAlg, err = GetAskarSignatureAlgorithm(params.Algorithm)
@@ -282,7 +282,7 @@ func (kms *AskarKeyManagementService) Sign(ctx *context.AgentContext, params Sig
 				return err
 			}
 		}
-		
+
 		// Sign the message
 		sig, err := localKey.SignMessage(params.Message, sigAlg)
 		if err != nil {
@@ -292,25 +292,25 @@ func (kms *AskarKeyManagementService) Sign(ctx *context.AgentContext, params Sig
 				Cause:   err,
 			}
 		}
-		
+
 		signature = sig
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return signature, nil
 }
 
 // Verify verifies a digital signature
 func (kms *AskarKeyManagementService) Verify(ctx *context.AgentContext, params VerifyParams) (bool, error) {
 	var valid bool
-	
+
 	err := kms.storeManager.WithSession(ctx, kms.storeID, func(session *askar.Session) error {
 		var askarKey *askar.Key
-		
+
 		if params.KeyID != "" {
 			// Use stored key
 			keyEntry, err := session.FetchKey(params.KeyID, false)
@@ -347,7 +347,7 @@ func (kms *AskarKeyManagementService) Verify(ctx *context.AgentContext, params V
 					Message: fmt.Sprintf("unsupported public key size: %d", len(params.PublicKey)),
 				}
 			}
-			
+
 			key, err := askar.KeyFromPublicBytes(algorithm, params.PublicKey)
 			if err != nil {
 				return err
@@ -360,7 +360,7 @@ func (kms *AskarKeyManagementService) Verify(ctx *context.AgentContext, params V
 				Message: "either keyId or publicKey must be provided",
 			}
 		}
-		
+
 		var sigAlg askar.SignatureAlgorithm
 		if params.Algorithm != "" {
 			var err error
@@ -369,7 +369,7 @@ func (kms *AskarKeyManagementService) Verify(ctx *context.AgentContext, params V
 				return err
 			}
 		}
-		
+
 		// Verify the signature
 		var verifyErr error
 		valid, verifyErr = askarKey.VerifySignature(params.Message, params.Signature, sigAlg)
@@ -377,24 +377,24 @@ func (kms *AskarKeyManagementService) Verify(ctx *context.AgentContext, params V
 			// Verification failed
 			valid = false
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return false, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return valid, nil
 }
 
 // Encrypt encrypts data
 func (kms *AskarKeyManagementService) Encrypt(ctx *context.AgentContext, params EncryptParams) (*EncryptedData, error) {
 	var encrypted *EncryptedData
-	
+
 	err := kms.storeManager.WithSession(ctx, kms.storeID, func(session *askar.Session) error {
 		var askarKey *askar.Key
-		
+
 		if params.KeyID != "" {
 			// Use stored key
 			keyEntry, err := session.FetchKey(params.KeyID, false)
@@ -426,7 +426,7 @@ func (kms *AskarKeyManagementService) Encrypt(ctx *context.AgentContext, params 
 				Message: "either keyId or publicKey must be provided",
 			}
 		}
-		
+
 		// Perform AEAD encryption
 		encBuffer, err := askarKey.AEADEncrypt(params.Plaintext, params.Nonce, params.AAD)
 		if err != nil {
@@ -436,7 +436,7 @@ func (kms *AskarKeyManagementService) Encrypt(ctx *context.AgentContext, params 
 				Cause:   err,
 			}
 		}
-		
+
 		encrypted = &EncryptedData{
 			Ciphertext: encBuffer.GetCiphertext(),
 			Nonce:      encBuffer.GetNonce(),
@@ -444,21 +444,21 @@ func (kms *AskarKeyManagementService) Encrypt(ctx *context.AgentContext, params 
 			AAD:        params.AAD,
 			Metadata:   params.Metadata,
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return encrypted, nil
 }
 
 // Decrypt decrypts data
 func (kms *AskarKeyManagementService) Decrypt(ctx *context.AgentContext, params DecryptParams) ([]byte, error) {
 	var plaintext []byte
-	
+
 	err := kms.storeManager.WithSession(ctx, kms.storeID, func(session *askar.Session) error {
 		keyEntry, err := session.FetchKey(params.KeyID, false)
 		if err != nil {
@@ -475,7 +475,7 @@ func (kms *AskarKeyManagementService) Decrypt(ctx *context.AgentContext, params 
 		if err != nil {
 			return err
 		}
-		
+
 		// Perform AEAD decryption
 		decrypted, err := localKey.AEADDecrypt(params.Ciphertext, params.Nonce, params.Tag, params.AAD)
 		if err != nil {
@@ -485,29 +485,29 @@ func (kms *AskarKeyManagementService) Decrypt(ctx *context.AgentContext, params 
 				Cause:   err,
 			}
 		}
-		
+
 		plaintext = decrypted
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return plaintext, nil
 }
 
 // ListKeys lists all keys with optional filtering
 func (kms *AskarKeyManagementService) ListKeys(ctx *context.AgentContext, keyType KeyType) ([]*Key, error) {
 	var keys []*Key
-	
+
 	err := kms.storeManager.WithSession(ctx, kms.storeID, func(session *askar.Session) error {
 		// Fetch all keys - FetchAllKeys(algorithm, thumbprint, tagFilter, limit, forUpdate)
 		keyEntries, err := session.FetchAllKeys("", "", nil, 0, false)
 		if err != nil {
 			return err
 		}
-		
+
 		for _, entry := range keyEntries {
 			// Parse key metadata from the metadata field
 			key := &Key{}
@@ -517,29 +517,29 @@ func (kms *AskarKeyManagementService) ListKeys(ctx *context.AgentContext, keyTyp
 					continue
 				}
 			}
-			
+
 			// Filter by type if specified
 			if keyType != "" && key.Type != keyType {
 				continue
 			}
-			
+
 			keys = append(keys, key)
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return keys, nil
 }
 
 // ExportKey exports a key in JWK format
 func (kms *AskarKeyManagementService) ExportKey(ctx *context.AgentContext, keyID string, includePrivate bool) (*JWK, error) {
 	var jwk *JWK
-	
+
 	err := kms.storeManager.WithSession(ctx, kms.storeID, func(session *askar.Session) error {
 		keyEntry, err := session.FetchKey(keyID, false)
 		if err != nil {
@@ -560,7 +560,7 @@ func (kms *AskarKeyManagementService) ExportKey(ctx *context.AgentContext, keyID
 				Cause:   err,
 			}
 		}
-		
+
 		var jwkString string
 		if includePrivate {
 			jwkString, err = localKey.GetJwkSecret()
@@ -574,15 +574,15 @@ func (kms *AskarKeyManagementService) ExportKey(ctx *context.AgentContext, keyID
 				Cause:   err,
 			}
 		}
-		
+
 		// Parse JWK JSON
 		jwk = &JWK{}
 		if err := json.Unmarshal([]byte(jwkString), jwk); err != nil {
 			return err
 		}
-		
+
 		jwk.Kid = keyID
-		
+
 		// Remove private key components if not requested
 		if !includePrivate {
 			jwk.D = ""
@@ -590,21 +590,21 @@ func (kms *AskarKeyManagementService) ExportKey(ctx *context.AgentContext, keyID
 			jwk.Q = ""
 			jwk.K = ""
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return jwk, nil
 }
 
 // GetPublicKey gets the public key bytes for a key
 func (kms *AskarKeyManagementService) GetPublicKey(ctx *context.AgentContext, keyID string) ([]byte, error) {
 	var publicKey []byte
-	
+
 	err := kms.storeManager.WithSession(ctx, kms.storeID, func(session *askar.Session) error {
 		keyEntry, err := session.FetchKey(keyID, false)
 		if err != nil {
@@ -621,7 +621,7 @@ func (kms *AskarKeyManagementService) GetPublicKey(ctx *context.AgentContext, ke
 		if err != nil {
 			return err
 		}
-		
+
 		pubKey, err := localKey.GetPublicBytes()
 		if err != nil {
 			return &KeyError{
@@ -630,15 +630,15 @@ func (kms *AskarKeyManagementService) GetPublicKey(ctx *context.AgentContext, ke
 				Cause:   err,
 			}
 		}
-		
+
 		publicKey = pubKey
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return publicKey, nil
 }
 
@@ -655,7 +655,7 @@ func (kms *AskarKeyManagementService) DeriveKey(ctx *context.AgentContext, param
 // KeyAgreement performs ECDH key agreement
 func (kms *AskarKeyManagementService) KeyAgreement(ctx *context.AgentContext, params KeyAgreementParams) ([]byte, error) {
 	var sharedSecret []byte
-	
+
 	err := kms.storeManager.WithSession(ctx, kms.storeID, func(session *askar.Session) error {
 		keyEntry, err := session.FetchKey(params.MyKeyID, false)
 		if err != nil {
@@ -674,11 +674,11 @@ func (kms *AskarKeyManagementService) KeyAgreement(ctx *context.AgentContext, pa
 			Message: "ECDH key agreement not yet implemented",
 		}
 	})
-	
+
 	if err != nil {
 		return nil, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return sharedSecret, nil
 }
 
@@ -687,14 +687,14 @@ func (kms *AskarKeyManagementService) GenerateNonce(length int) ([]byte, error) 
 	if length <= 0 {
 		length = 12 // Default nonce length for GCM
 	}
-	
+
 	nonce := make([]byte, length)
 	// Use Askar's random generation or fallback to crypto/rand
 	// For now, using a simple approach
 	for i := range nonce {
 		nonce[i] = byte(i)
 	}
-	
+
 	return nonce, nil
 }
 
@@ -713,7 +713,7 @@ func (kms *AskarKeyManagementService) UpdateKeyMetadata(ctx *context.AgentContex
 			}
 		}
 		// Note: keyEntry is automatically cleaned up
-		
+
 		// Parse existing metadata
 		key := &Key{}
 		if keyEntry.Metadata != "" {
@@ -721,17 +721,17 @@ func (kms *AskarKeyManagementService) UpdateKeyMetadata(ctx *context.AgentContex
 				return err
 			}
 		}
-		
+
 		// Update metadata
 		key.Tags = metadata
 		key.UpdatedAt = time.Now()
-		
+
 		// Store updated metadata
 		keyJSON, err := json.Marshal(key)
 		if err != nil {
 			return err
 		}
-		
+
 		// Update the key entry
 		err = session.UpdateKey(keyID, string(keyJSON), nil)
 		if err != nil {
@@ -741,17 +741,17 @@ func (kms *AskarKeyManagementService) UpdateKeyMetadata(ctx *context.AgentContex
 				Cause:   err,
 			}
 		}
-		
+
 		return nil
 	})
-	
+
 	return askarerrors.WrapAskarError(err)
 }
 
 // WrapKey wraps a key using another key (key wrapping)
 func (kms *AskarKeyManagementService) WrapKey(ctx *context.AgentContext, keyToWrapID string, wrappingKeyID string) ([]byte, error) {
 	var wrappedKey []byte
-	
+
 	err := kms.storeManager.WithSession(ctx, kms.storeID, func(session *askar.Session) error {
 		keyToWrap, err := session.FetchKey(keyToWrapID, false)
 		if err != nil {
@@ -764,7 +764,7 @@ func (kms *AskarKeyManagementService) WrapKey(ctx *context.AgentContext, keyToWr
 			}
 		}
 		// Note: keyToWrap is automatically cleaned up
-		
+
 		wrappingKey, err := session.FetchKey(wrappingKeyID, false)
 		if err != nil {
 			return err
@@ -776,13 +776,13 @@ func (kms *AskarKeyManagementService) WrapKey(ctx *context.AgentContext, keyToWr
 			}
 		}
 		// Note: wrappingKey is automatically cleaned up
-		
+
 		// Load keys from entries
 		keyToWrapLocal, err := keyToWrap.LoadLocal()
 		if err != nil {
 			return err
 		}
-		
+
 		secretBytes, err := keyToWrapLocal.GetSecretBytes()
 		if err != nil {
 			return &KeyError{
@@ -791,13 +791,13 @@ func (kms *AskarKeyManagementService) WrapKey(ctx *context.AgentContext, keyToWr
 				Cause:   err,
 			}
 		}
-		
+
 		// Load wrapping key
 		wrappingKeyLocal, err := wrappingKey.LoadLocal()
 		if err != nil {
 			return err
 		}
-		
+
 		// Use AEAD encryption for key wrapping (WrapKey not available)
 		encBuffer, err := wrappingKeyLocal.AEADEncrypt(secretBytes, nil, nil)
 		if err != nil {
@@ -807,18 +807,18 @@ func (kms *AskarKeyManagementService) WrapKey(ctx *context.AgentContext, keyToWr
 				Cause:   err,
 			}
 		}
-		
+
 		// Combine nonce, tag, and ciphertext
 		wrappedKey = append(encBuffer.GetNonce(), encBuffer.GetTag()...)
 		wrappedKey = append(wrappedKey, encBuffer.GetCiphertext()...)
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return wrappedKey, nil
 }
 
@@ -841,7 +841,7 @@ func (kms *AskarKeyManagementService) ConvertKeyType(ctx *context.AgentContext, 
 			Message: fmt.Sprintf("conversion to %s not supported", targetType),
 		}
 	}
-	
+
 	var newKey *Key
 	err := kms.storeManager.WithTransaction(ctx, kms.storeID, func(session *askar.Session) error {
 		// Fetch the Ed25519 key
@@ -862,11 +862,11 @@ func (kms *AskarKeyManagementService) ConvertKeyType(ctx *context.AgentContext, 
 			Message: "key conversion not yet implemented",
 		}
 	})
-	
+
 	if err != nil {
 		return nil, askarerrors.WrapAskarError(err)
 	}
-	
+
 	return newKey, nil
 }
 

@@ -64,19 +64,7 @@ func (d *Dispatcher) Dispatch(ctx *InboundMessageContext) error {
 
 	// Emit AgentMessageReceived — skipped to avoid context-based DI
 
-	d.mutex.RLock()
-	handler, ok := d.handlers[msgType]
-	d.mutex.RUnlock()
-
-	if !ok {
-		lg.Warnf("No handler registered for message type: %s", msgType)
-		return fmt.Errorf("no handler registered for message type %s", msgType)
-	}
-
-	lg.Infof("Dispatching message type: %s", msgType)
-
-	// Call the handler - it returns OutboundMessageContext or nil
-	outboundCtx, err := handler(ctx)
+	outboundCtx, err := d.DispatchSync(ctx)
 	if err != nil {
 		lg.Errorf("Handler error for %s: %v", msgType, err)
 		return err
@@ -105,6 +93,29 @@ func (d *Dispatcher) Dispatch(ctx *InboundMessageContext) error {
 	}
 
 	return nil
+}
+
+// DispatchSync invokes the handler and returns the outbound message context without sending it.
+// The caller decides whether to send inline (e.g., return-route) or via MessageSender.
+func (d *Dispatcher) DispatchSync(ctx *InboundMessageContext) (*models.OutboundMessageContext, error) {
+	if ctx == nil || ctx.Message == nil {
+		return nil, fmt.Errorf("nil inbound message context")
+	}
+
+	lg := getLogger(ctx)
+	msgType := ctx.Message.GetType()
+
+	d.mutex.RLock()
+	handler, ok := d.handlers[msgType]
+	d.mutex.RUnlock()
+
+	if !ok {
+		lg.Warnf("No handler registered for message type: %s", msgType)
+		return nil, fmt.Errorf("no handler registered for message type %s", msgType)
+	}
+
+	lg.Infof("Dispatching message type: %s", msgType)
+	return handler(ctx)
 }
 
 // Global dispatcher reference for components that need to dispatch outside the HTTP receiver

@@ -8,21 +8,21 @@ const RequestPresentationV2Type = "https://didcomm.org/present-proof/2.0/request
 
 type RequestPresentationV2 struct {
 	*messages.BaseMessage
-	Comment              string                      `json:"comment,omitempty"`
-	WillConfirm          bool                        `json:"will_confirm,omitempty"`
-	PresentationRequest  *PresentationRequestAttach  `json:"presentation_request,omitempty"`
-	Formats              []AttachmentFormat           `json:"formats"`
+	Comment              string                         `json:"comment,omitempty"`
+	WillConfirm          bool                           `json:"will_confirm,omitempty"`
+	PresentationRequest  *PresentationRequestAttach     `json:"presentation_request,omitempty"`
+	Formats              []AttachmentFormat             `json:"formats"`
 	RequestPresentations []messages.AttachmentDecorator `json:"request_presentations~attach"`
 }
 
 type PresentationRequestAttach struct {
-	Type                string                            `json:"@type,omitempty"`
-	Name                string                            `json:"name"`
-	Version             string                            `json:"version"`
-	Nonce               string                            `json:"nonce"`
-	RequestedAttributes map[string]*RequestedAttribute    `json:"requested_attributes"`
-	RequestedPredicates map[string]*RequestedPredicate    `json:"requested_predicates"`
-	NonRevoked          *NonRevokedInterval               `json:"non_revoked,omitempty"`
+	Type                string                         `json:"@type,omitempty"`
+	Name                string                         `json:"name"`
+	Version             string                         `json:"version"`
+	Nonce               string                         `json:"nonce"`
+	RequestedAttributes map[string]*RequestedAttribute `json:"requested_attributes"`
+	RequestedPredicates map[string]*RequestedPredicate `json:"requested_predicates"`
+	NonRevoked          *NonRevokedInterval            `json:"non_revoked,omitempty"`
 }
 
 type RequestedAttribute struct {

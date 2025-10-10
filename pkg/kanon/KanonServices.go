@@ -5,7 +5,7 @@ package kanon
 
 import (
 	"fmt"
-	
+
 	"github.com/Ajna-inc/anoncreds-go/pkg/anoncreds"
 	dids "github.com/ajna-inc/essi/pkg/core/modules/dids"
 	"github.com/ajna-inc/essi/pkg/kanon/ledger"
@@ -157,12 +157,12 @@ func (r *KanonDidResolver) Resolve(did string) (*dids.DidResolutionResult, error
 	if err != nil {
 		return &dids.DidResolutionResult{
 			DidResolutionMetadata: &dids.DidResolutionMetadata{
-				Error: "notFound",
+				Error:   "notFound",
 				Message: err.Error(),
 			},
 		}, nil
 	}
-	
+
 	// Parse DID document
 	var didDoc *dids.DidDoc
 	if doc, ok := didDocData.(*dids.DidDoc); ok {
@@ -172,7 +172,7 @@ func (r *KanonDidResolver) Resolve(did string) (*dids.DidResolutionResult, error
 		didDoc = dids.NewDidDoc(did)
 		// Parse the data and populate didDoc
 	}
-	
+
 	return &dids.DidResolutionResult{
 		DidDocument: didDoc,
 		DidResolutionMetadata: &dids.DidResolutionMetadata{

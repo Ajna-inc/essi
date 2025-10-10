@@ -17,7 +17,7 @@ type MediationStorageRecord struct {
 func NewMediationStorageRecord(mr *MediationRecord) *MediationStorageRecord {
 	return &MediationStorageRecord{
 		MediationRecord: mr,
-		tags:           make(map[string]string),
+		tags:            make(map[string]string),
 	}
 }
 
@@ -41,7 +41,7 @@ func (r *MediationStorageRecord) GetTags() map[string]string {
 	if r.tags == nil {
 		r.tags = make(map[string]string)
 	}
-	
+
 	// Build tags from MediationRecord fields
 	r.tags["connectionId"] = r.ConnectionId
 	r.tags["threadId"] = r.ThreadId
@@ -52,12 +52,12 @@ func (r *MediationStorageRecord) GetTags() map[string]string {
 	} else {
 		r.tags["default"] = "false"
 	}
-	
+
 	// Add any additional tags from the Tags field
 	for k, v := range r.Tags {
 		r.tags[k] = v
 	}
-	
+
 	return r.tags
 }
 
@@ -103,17 +103,17 @@ func (r *MediationStorageRecord) Clone() storage.Record {
 	data, _ := json.Marshal(r.MediationRecord)
 	var cloned MediationRecord
 	json.Unmarshal(data, &cloned)
-	
+
 	newRecord := &MediationStorageRecord{
 		MediationRecord: &cloned,
-		tags:           make(map[string]string),
+		tags:            make(map[string]string),
 	}
-	
+
 	// Copy tags
 	for k, v := range r.tags {
 		newRecord.tags[k] = v
 	}
-	
+
 	return newRecord
 }
 

@@ -16,10 +16,10 @@ type KanonModuleConfigOptions struct {
 
 // NetworkConfig represents a network configuration
 type NetworkConfig struct {
-	Network    string
-	RpcUrl     string
-	PrivateKey string
-	ChainId    int64
+	Network         string
+	RpcUrl          string
+	PrivateKey      string
+	ChainId         int64
 	ContractAddress string
 }
 
@@ -45,7 +45,7 @@ type Module struct {
 
 // KanonModule creates a new Kanon module
 func KanonModule(configOptions KanonModuleConfigOptions) *Module {
-	return &Module{ config: KanonModuleConfigCreate(configOptions) }
+	return &Module{config: KanonModuleConfigCreate(configOptions)}
 }
 
 // Register implements di.Module to participate in typed DI
@@ -57,7 +57,7 @@ func (m *Module) Register(dm di.DependencyManager) error {
 	var kanonLedger ledger.KanonLedger
 	if len(m.config.Networks()) > 0 {
 		n := m.config.Networks()[0]
-		cfg := Config{ RpcUrl: n.RpcUrl, PrivateKey: n.PrivateKey, ChainID: n.ChainId, ContractAddress: n.ContractAddress, Enabled: true }
+		cfg := Config{RpcUrl: n.RpcUrl, PrivateKey: n.PrivateKey, ChainID: n.ChainId, ContractAddress: n.ContractAddress, Enabled: true}
 		if cfg.RpcUrl == "" || cfg.ContractAddress == "" {
 			return fmt.Errorf("KanonModule: missing rpcUrl or contractAddress in network config")
 		}
@@ -99,15 +99,21 @@ type EthereumLedgerService struct {
 
 // EthereumLedgerServiceCreate creates a new Ethereum ledger service
 func EthereumLedgerServiceCreate(config *KanonModuleConfig, ledger ledger.KanonLedger) *EthereumLedgerService {
-	return &EthereumLedgerService{ config: config, ledger: ledger }
+	return &EthereumLedgerService{config: config, ledger: ledger}
 }
 
 // GetLedger returns the underlying ledger
 func (s *EthereumLedgerService) GetLedger() ledger.KanonLedger { return s.ledger }
+
 // GetConfig returns the module config
 func (s *EthereumLedgerService) GetConfig() *KanonModuleConfig { return s.config }
+
 // GetNetworkConfig returns config for a specific network
 func (s *EthereumLedgerService) GetNetworkConfig(network string) *NetworkConfig {
-	for _, n := range s.config.Networks() { if n.Network == network { return &n } }
+	for _, n := range s.config.Networks() {
+		if n.Network == network {
+			return &n
+		}
+	}
 	return nil
 }

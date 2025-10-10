@@ -7,9 +7,8 @@ import (
 	"strings"
 
 	"github.com/ajna-inc/essi/pkg/core/di"
-	coreevents "github.com/ajna-inc/essi/pkg/core/events"
-	"github.com/ajna-inc/essi/pkg/core/logger"
 	"github.com/ajna-inc/essi/pkg/core/encoding"
+	"github.com/ajna-inc/essi/pkg/core/logger"
 	"github.com/ajna-inc/essi/pkg/core/wallet"
 	"github.com/ajna-inc/essi/pkg/didcomm/models"
 	services "github.com/ajna-inc/essi/pkg/didcomm/modules/connections/services"
@@ -56,24 +55,33 @@ func DidExchangeRequestHandlerFunc(ctx *transport.InboundMessageContext) (*model
 			rec.TheirDid = didVal
 		}
 		// Minimal did_doc~attach parsing for endpoint/key
-		if att, ok := raw["did_doc~attach"].(map[string]interface{}); ok {
-			if data, ok := att["data"].(map[string]interface{}); ok {
-				if b64, ok := data["base64"].(string); ok && b64 != "" {
-					var decoded []byte
-					if d, err := base64.RawURLEncoding.DecodeString(b64); err == nil {
-						decoded = d
-					} else if d, err := base64.StdEncoding.DecodeString(b64); err == nil {
-						decoded = d
-					}
-					if len(decoded) > 0 {
-						var doc map[string]interface{}
-						if err := json.Unmarshal(decoded, &doc); err == nil {
-							if svcs, ok := doc["service"].([]interface{}); ok {
-								for _, it := range svcs {
-									svc, ok := it.(map[string]interface{})
-									if !ok {
-										continue
-									}
+            if att, ok := raw["did_doc~attach"].(map[string]interface{}); ok {
+                if data, ok := att["data"].(map[string]interface{}); ok {
+                    var decoded []byte
+                    if b64, ok := data["base64"].(string); ok && b64 != "" {
+                        if d, err := base64.RawURLEncoding.DecodeString(b64); err == nil {
+                            decoded = d
+                        } else if d, err := base64.StdEncoding.DecodeString(b64); err == nil {
+                            decoded = d
+                        }
+                    } else if jwsObj, ok := data["jws"].(map[string]interface{}); ok {
+                        if payload, ok := jwsObj["payload"].(string); ok && payload != "" {
+                            if d, err := base64.RawURLEncoding.DecodeString(payload); err == nil {
+                                decoded = d
+                            } else if d, err := base64.StdEncoding.DecodeString(payload); err == nil {
+                                decoded = d
+                            }
+                        }
+                    }
+                    if len(decoded) > 0 {
+                        var doc map[string]interface{}
+                        if err := json.Unmarshal(decoded, &doc); err == nil {
+                            if svcs, ok := doc["service"].([]interface{}); ok {
+                                for _, it := range svcs {
+                                    svc, ok := it.(map[string]interface{})
+                                    if !ok {
+                                        continue
+                                    }
 									if t, ok := svc["type"].(string); ok {
 										if t != "did-communication" && t != "DIDCommMessaging" && t != "IndyAgent" {
 											continue
@@ -124,30 +132,57 @@ func DidExchangeRequestHandlerFunc(ctx *transport.InboundMessageContext) (*model
 									if rec.TheirEndpoint != "" && rec.TheirRecipientKey != "" {
 										break
 									}
-								}
-								// Persist parsed DIDDoc if repo available (best effort)
-								if ctx != nil && ctx.TypedDI != nil && rec != nil && rec.TheirDid != "" {
-									if dep, err := ctx.TypedDI.Resolve(di.TokenReceivedDidRepository); err == nil {
-										if repo, ok := dep.(*didrepo.ReceivedDidRepository); ok && repo != nil {
-											// Skip actual save here to avoid type import cycles; handled elsewhere
-											_ = repo
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+                                }
+                                // Persist parsed DIDDoc if repo available (best effort)
+                                if ctx != nil && ctx.TypedDI != nil && rec != nil && rec.TheirDid != "" {
+                                    if dep, err := ctx.TypedDI.Resolve(di.TokenReceivedDidRepository); err == nil {
+                                        if repo, ok := dep.(*didrepo.ReceivedDidRepository); ok && repo != nil {
+                                            // Skip actual save here to avoid type import cycles; handled elsewhere
+                                            _ = repo
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else if j, ok := data["json"].(map[string]interface{}); ok && j != nil {
+                        // Clear JSON form
+                        doc := j
+                        if svcs, ok := doc["service"].([]interface{}); ok {
+                            for _, it := range svcs {
+                                svc, ok := it.(map[string]interface{})
+                                if !ok { continue }
+                                if t, ok := svc["type"].(string); ok { if t != "did-communication" && t != "DIDCommMessaging" && t != "IndyAgent" { continue } }
+                                if rec.TheirEndpoint == "" {
+                                    if ep, ok := svc["serviceEndpoint"].(string); ok && ep != "" { rec.TheirEndpoint = ep }
+                                    if epObj, ok := svc["serviceEndpoint"].(map[string]interface{}); ok { if uri, ok := epObj["uri"].(string); ok && uri != "" { rec.TheirEndpoint = uri } }
+                                }
+                                if rec.TheirRecipientKey == "" {
+                                    if rks, ok := svc["recipientKeys"].([]interface{}); ok && len(rks) > 0 {
+                                        if kid, ok := rks[0].(string); ok {
+                                            if strings.HasPrefix(kid, "did:key:") { if b58 := transport.DidKeyToBase58(kid); b58 != "" { rec.TheirRecipientKey = b58 } }
+                                            if strings.HasPrefix(kid, "#") {
+                                                if auth, ok := doc["authentication"].([]interface{}); ok {
+                                                    for _, a := range auth { if ao, ok := a.(map[string]interface{}); ok { if id, _ := ao["id"].(string); id == kid { if pk, ok := ao["publicKeyBase58"].(string); ok && pk != "" { rec.TheirRecipientKey = pk; break } ; if mb, ok := ao["publicKeyMultibase"].(string); ok && mb != "" { if v := transport.MultibaseToBase58(mb); v != "" { rec.TheirRecipientKey = v; break } } } } }
+                                            } else if !strings.Contains(kid, ":") { rec.TheirRecipientKey = kid }
+                                        }
+                                    }
+                                }
+                                if rec.TheirEndpoint != "" && rec.TheirRecipientKey != "" { break }
+                            }
+                        }
+                    }
+                }
+            }
+    }
 	}
 
 	if rec.TheirRecipientKey == "" && len(ctx.SenderKey) > 0 {
 		rec.TheirRecipientKey = encoding.EncodeBase58(ctx.SenderKey)
 	}
-	if cs := getConnectionService(ctx); cs != nil && rec != nil {
-		_ = cs.UpdateConnection(rec)
-	}
+    // Persist parsed fields now, but emit responded only after our DID/keys are saved (below)
+    if cs := getConnectionService(ctx); cs != nil && rec != nil {
+        _ = cs.UpdateConnection(rec)
+    }
 
 	ourKey, err := walletService.CreateKey(wallet.KeyTypeEd25519)
 	if err != nil {
@@ -165,9 +200,11 @@ func DidExchangeRequestHandlerFunc(ctx *transport.InboundMessageContext) (*model
 	ourDidDoc.Id = ourDid
 	rec.Did = ourDid
 	rec.MyKeyId = ourKey.Id
-	if cs := getConnectionService(ctx); cs != nil {
-		_ = cs.UpdateConnection(rec)
-	}
+    if cs := getConnectionService(ctx); cs != nil {
+        _ = cs.UpdateConnection(rec)
+        // Now that our DID and key are persisted, emit responded (responder side)
+        _ = cs.UpdateConnectionState(rec.ID, services.ConnectionStateResponded)
+    }
 
 	resp, err := protocol.CreateResponse(ctx.AgentContext, rec, nil, nil)
 	if err != nil {
@@ -236,15 +273,91 @@ func DidExchangeResponseHandlerFunc(ctx *transport.InboundMessageContext) (*mode
 	} else {
 		logger.GetDefaultLogger().Warnf("Failed to parse response JSON for DID extraction: %v", err)
 	}
-	// Always update TheirRecipientKey from authcrypt sender key (base58) so follow-up uses responder key even if DID resolution fails
-	if ctx != nil && ctx.SenderKey != nil {
-		senderB58 := encoding.EncodeBase58(ctx.SenderKey)
-		if senderB58 != "" {
-			rec.TheirRecipientKey = senderB58
-			_ = connectionSvc.UpdateConnection(rec)
-			logger.GetDefaultLogger().Infof("Set TheirRecipientKey from response sender key: %s", senderB58)
-		}
-	}
+    // Parse did_doc~attach from response to populate endpoint and recipient key for requester side
+    if ctx != nil && ctx.Raw != nil {
+        var raw map[string]interface{}
+        _ = json.Unmarshal(ctx.Raw, &raw)
+        if raw != nil {
+            if att, ok := raw["did_doc~attach"].(map[string]interface{}); ok {
+                if data, ok := att["data"].(map[string]interface{}); ok {
+                    var decoded []byte
+                    if b64, ok := data["base64"].(string); ok && b64 != "" {
+                        if d, err := base64.RawURLEncoding.DecodeString(b64); err == nil {
+                            decoded = d
+                        } else if d, err := base64.StdEncoding.DecodeString(b64); err == nil {
+                            decoded = d
+                        }
+                    } else if jwsObj, ok := data["jws"].(map[string]interface{}); ok {
+                        if payload, ok := jwsObj["payload"].(string); ok && payload != "" {
+                            if d, err := base64.RawURLEncoding.DecodeString(payload); err == nil {
+                                decoded = d
+                            } else if d, err := base64.StdEncoding.DecodeString(payload); err == nil {
+                                decoded = d
+                            }
+                        }
+                    } else if j, ok := data["json"].(map[string]interface{}); ok && j != nil {
+                        // direct json
+                        if b, err := json.Marshal(j); err == nil { decoded = b }
+                    }
+                    if len(decoded) > 0 {
+                        var doc map[string]interface{}
+                        if err := json.Unmarshal(decoded, &doc); err == nil {
+                            if svcs, ok := doc["service"].([]interface{}); ok {
+                                for _, it := range svcs {
+                                    svc, ok := it.(map[string]interface{})
+                                    if !ok { continue }
+                                    if t, ok := svc["type"].(string); ok {
+                                        if t != "did-communication" && t != "DIDCommMessaging" && t != "IndyAgent" { continue }
+                                    }
+                                    if rec.TheirEndpoint == "" {
+                                        if ep, ok := svc["serviceEndpoint"].(string); ok && ep != "" { rec.TheirEndpoint = ep }
+                                        if epObj, ok := svc["serviceEndpoint"].(map[string]interface{}); ok {
+                                            if uri, ok := epObj["uri"].(string); ok && uri != "" { rec.TheirEndpoint = uri }
+                                        }
+                                    }
+                                    if rec.TheirRecipientKey == "" {
+                                        if rks, ok := svc["recipientKeys"].([]interface{}); ok && len(rks) > 0 {
+                                            if kid, ok := rks[0].(string); ok {
+                                                if strings.HasPrefix(kid, "did:key:") {
+                                                    if b58 := transport.DidKeyToBase58(kid); b58 != "" { rec.TheirRecipientKey = b58 }
+                                                } else if strings.HasPrefix(kid, "#") {
+                                                    if auth, ok := doc["authentication"].([]interface{}); ok {
+                                                        for _, a := range auth {
+                                                            if ao, ok := a.(map[string]interface{}); ok {
+                                                                if id, _ := ao["id"].(string); id == kid {
+                                                                    if pk, ok := ao["publicKeyBase58"].(string); ok && pk != "" { rec.TheirRecipientKey = pk; break }
+                                                                    if mb, ok := ao["publicKeyMultibase"].(string); ok && mb != "" {
+                                                                        if v := transport.MultibaseToBase58(mb); v != "" { rec.TheirRecipientKey = v; break }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                } else if !strings.Contains(kid, ":") { rec.TheirRecipientKey = kid }
+                                            }
+                                        }
+                                    }
+                                    if rec.TheirEndpoint != "" && rec.TheirRecipientKey != "" { break }
+                                }
+                            }
+                            _ = connectionSvc.UpdateConnection(rec)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Always update TheirRecipientKey from authcrypt sender key (base58) so follow-up uses responder key even if DID resolution fails
+    if ctx != nil && ctx.SenderKey != nil {
+        senderB58 := encoding.EncodeBase58(ctx.SenderKey)
+        if senderB58 != "" {
+            rec.TheirRecipientKey = senderB58
+            _ = connectionSvc.UpdateConnection(rec)
+            logger.GetDefaultLogger().Infof("Set TheirRecipientKey from response sender key: %s", senderB58)
+        }
+    }
+    // Publish responded prior to sending complete (requester side)
+    _ = connectionSvc.UpdateConnectionState(rec.ID, services.ConnectionStateResponded)
 	// Parse did_rotate~attach to obtain rotated DID and kid if present (Credo-TS parity)
 	if rawMsg != nil {
 		if rot, ok := rawMsg["did_rotate~attach"].(map[string]interface{}); ok {
@@ -372,14 +485,7 @@ func DidExchangeResponseHandlerFunc(ctx *transport.InboundMessageContext) (*mode
 	// Debug threading for complete
 	logger.GetDefaultLogger().Debugf("Complete threading: thid=%s pthid=%s", complete.GetThreadId(), complete.GetParentThreadId())
 	// Persist state transition to complete and emit event before sending complete
-	if err := connectionSvc.UpdateConnectionState(rec.ID, services.ConnectionStateComplete); err == nil {
-		if bus := getEventBus(ctx); bus != nil {
-			bus.Publish(coreevents.EventConnectionStateChanged, map[string]interface{}{
-				"connectionId": rec.ID,
-				"state":        string(services.ConnectionStateComplete),
-			})
-		}
-	}
+    if err := connectionSvc.UpdateConnectionState(rec.ID, services.ConnectionStateComplete); err == nil { }
 	// Attach OOB to outbound context so sender can use inline service when needed
 	outboundCtx.OutOfBand = oobRec
 	// Update OOB state for receiver role: PrepareResponse -> Done when sending complete
@@ -460,11 +566,6 @@ func DidExchangeCompleteHandlerFunc(ctx *transport.InboundMessageContext) (*mode
 			}
 		}
 	}
-	if bus := getEventBus(ctx); bus != nil {
-		bus.Publish(coreevents.EventConnectionStateChanged, map[string]interface{}{
-			"connectionId": rec.ID,
-			"state":        string(services.ConnectionStateComplete),
-		})
-	}
-	return nil, nil
+    // Event already emitted by UpdateConnectionState
+    return nil, nil
 }

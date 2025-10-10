@@ -1,7 +1,7 @@
 ASKAR_NATIVE := $(shell go list -f '{{.Dir}}' github.com/Ajna-inc/askar-go)/native
 CGO_RPATH := -Wl,-rpath,@executable_path -Wl,-rpath,@executable_path/native
 
-.PHONY: test test-pkg build create-oob create-oob-invitation run-create-oob prepare-askar kanon-test run
+.PHONY: test test-integration test-pkg build create-oob create-oob-invitation run-create-oob prepare-askar kanon-test run
 
 test:
 	go test ./...
@@ -55,10 +55,14 @@ build: ## Build the project
 	@echo "Building Essi-Go..."
 	CGO_LDFLAGS="$(CGO_RPATH)" go build -v ./...
 
-test: prepare-askar ## Run tests (exclude cmd packages)
+test: prepare-askar ## Run unit tests (exclude cmd, acapy, integration, and heavy modules)
 	@echo "Running tests..."
-	@PKGS=$$(go list ./... | grep -v '^github.com/ajna-inc/essi/cmd'); \
-	DYLD_LIBRARY_PATH="$(PWD)/native:$$DYLD_LIBRARY_PATH" CGO_LDFLAGS="$(CGO_RPATH)" go test -v -race -coverprofile=coverage.out $$PKGS
+	@PKGS=$$(go list ./pkg/... | grep -v '^github.com/ajna-inc/essi/pkg/kanon'); \
+	DYLD_LIBRARY_PATH="$(PWD)/native:$$DYLD_LIBRARY_PATH" CGO_LDFLAGS="$(CGO_RPATH)" go test -v -coverprofile=coverage.out $$PKGS
+
+test-integration: prepare-askar ## Run integration (E2E) tests only
+	@echo "Running integration tests..."
+	DYLD_LIBRARY_PATH="$(PWD)/native:$$DYLD_LIBRARY_PATH" CGO_LDFLAGS="$(CGO_RPATH)" go test -tags=integration -v ./tests/integration
 
 test-coverage: test ## Run tests with coverage report
 	@echo "Generating coverage report..."

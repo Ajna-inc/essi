@@ -3,7 +3,7 @@
 package kanon
 
 // This file serves as the main entry point for the Kanon plugin
-// In Go, we don't have export * like TypeScript, but all public 
+// In Go, we don't have export * like TypeScript, but all public
 // types and functions (starting with capital letters) are automatically exported
 
 // The main exports from this package are:
@@ -14,5 +14,5 @@ package kanon
 //
 // From sub-packages:
 // - dids.KanonDidRegistrar: DID registrar for Kanon
-// - dids.KanonDidResolver: DID resolver for Kanon  
+// - dids.KanonDidResolver: DID resolver for Kanon
 // - anoncreds.KanonAnonCredsRegistry: AnonCreds registry for Kanon

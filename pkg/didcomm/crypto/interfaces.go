@@ -11,7 +11,7 @@ type Signer interface {
 	GetKeyId() string
 }
 
-// Verifier interface for verifying digital signatures  
+// Verifier interface for verifying digital signatures
 type Verifier interface {
 	Verify(ctx *context.AgentContext, data []byte, signature []byte) (bool, error)
 	GetKeyType() string

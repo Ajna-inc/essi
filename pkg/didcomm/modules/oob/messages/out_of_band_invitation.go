@@ -118,28 +118,28 @@ func (m *OutOfBandInvitationMessage) MarshalJSON() ([]byte, error) {
 
 // NewOutOfBandInvitationMessage creates a new out-of-band invitation
 func NewOutOfBandInvitationMessage(label string) *OutOfBandInvitationMessage {
-    baseMessage := messages.NewBaseMessage(OutOfBandInvitationType)
+	baseMessage := messages.NewBaseMessage(OutOfBandInvitationType)
 
-    return &OutOfBandInvitationMessage{
-        BaseMessage: baseMessage,
-        Label:       label,
-        Services:    []OutOfBandService{},
-        Handshake:   []HandshakeProtocol{},
-        Accept:      []string{"didcomm/aip1", "didcomm/aip2;env=rfc19"},
-    }
+	return &OutOfBandInvitationMessage{
+		BaseMessage: baseMessage,
+		Label:       label,
+		Services:    []OutOfBandService{},
+		Handshake:   []HandshakeProtocol{},
+		Accept:      []string{"didcomm/aip1", "didcomm/aip2;env=rfc19"},
+	}
 }
 
 // NewOutOfBandInvitationMessageWithId creates a new OOB invitation with specific ID
 func NewOutOfBandInvitationMessageWithId(id, label string) *OutOfBandInvitationMessage {
-    baseMessage := messages.NewBaseMessageWithId(id, OutOfBandInvitationType)
+	baseMessage := messages.NewBaseMessageWithId(id, OutOfBandInvitationType)
 
-    return &OutOfBandInvitationMessage{
-        BaseMessage: baseMessage,
-        Label:       label,
-        Services:    []OutOfBandService{},
-        Handshake:   []HandshakeProtocol{},
-        Accept:      []string{"didcomm/aip1", "didcomm/aip2;env=rfc19"},
-    }
+	return &OutOfBandInvitationMessage{
+		BaseMessage: baseMessage,
+		Label:       label,
+		Services:    []OutOfBandService{},
+		Handshake:   []HandshakeProtocol{},
+		Accept:      []string{"didcomm/aip1", "didcomm/aip2;env=rfc19"},
+	}
 }
 
 // SetGoal sets the goal and goal code for the invitation
@@ -618,14 +618,14 @@ func (m *OutOfBandInvitationMessage) UnmarshalJSON(data []byte) error {
 		Transport json.RawMessage `json:"~transport,omitempty"`
 
 		// OOB specific fields
-		Label              string             `json:"label"`
-		GoalCode           string             `json:"goal_code,omitempty"`
-		Goal               string             `json:"goal,omitempty"`
-		Accept             []string           `json:"accept,omitempty"`
-		HandshakeProtocols json.RawMessage    `json:"handshake_protocols,omitempty"`
-		Services           []json.RawMessage  `json:"services"`
-		Requests           []interface{}      `json:"requests~attach,omitempty"`
-		ImageUrl           string             `json:"imageUrl,omitempty"`
+		Label              string            `json:"label"`
+		GoalCode           string            `json:"goal_code,omitempty"`
+		Goal               string            `json:"goal,omitempty"`
+		Accept             []string          `json:"accept,omitempty"`
+		HandshakeProtocols json.RawMessage   `json:"handshake_protocols,omitempty"`
+		Services           []json.RawMessage `json:"services"`
+		Requests           []interface{}     `json:"requests~attach,omitempty"`
+		ImageUrl           string            `json:"imageUrl,omitempty"`
 	}
 
 	var temp TempMessage

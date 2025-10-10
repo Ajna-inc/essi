@@ -32,13 +32,13 @@ const (
 
 // Key represents a cryptographic key with metadata
 type Key struct {
-	ID          string             `json:"id"`
-	Type        KeyType            `json:"type"`
-	PublicKey   []byte             `json:"publicKey,omitempty"`
-	Algorithm   askar.KeyAlgorithm `json:"algorithm"`
-	CreatedAt   time.Time          `json:"createdAt"`
-	UpdatedAt   time.Time          `json:"updatedAt"`
-	Tags        map[string]string  `json:"tags,omitempty"`
+	ID        string             `json:"id"`
+	Type      KeyType            `json:"type"`
+	PublicKey []byte             `json:"publicKey,omitempty"`
+	Algorithm askar.KeyAlgorithm `json:"algorithm"`
+	CreatedAt time.Time          `json:"createdAt"`
+	UpdatedAt time.Time          `json:"updatedAt"`
+	Tags      map[string]string  `json:"tags,omitempty"`
 }
 
 // CreateKeyParams represents parameters for creating a new key
@@ -75,13 +75,13 @@ type VerifyParams struct {
 
 // EncryptParams represents parameters for encryption
 type EncryptParams struct {
-	KeyID      string            `json:"keyId,omitempty"`
-	PublicKey  []byte            `json:"publicKey,omitempty"`
-	Plaintext  []byte            `json:"plaintext"`
-	AAD        []byte            `json:"aad,omitempty"`
-	Nonce      []byte            `json:"nonce,omitempty"`
-	RecipientKeys [][]byte       `json:"recipientKeys,omitempty"`
-	Metadata   map[string]string `json:"metadata,omitempty"`
+	KeyID         string            `json:"keyId,omitempty"`
+	PublicKey     []byte            `json:"publicKey,omitempty"`
+	Plaintext     []byte            `json:"plaintext"`
+	AAD           []byte            `json:"aad,omitempty"`
+	Nonce         []byte            `json:"nonce,omitempty"`
+	RecipientKeys [][]byte          `json:"recipientKeys,omitempty"`
+	Metadata      map[string]string `json:"metadata,omitempty"`
 }
 
 // DecryptParams represents parameters for decryption
@@ -95,9 +95,9 @@ type DecryptParams struct {
 
 // KeyAgreementParams represents parameters for key agreement
 type KeyAgreementParams struct {
-	MyKeyID    string  `json:"myKeyId"`
-	TheirKey   []byte  `json:"theirKey"`
-	Algorithm  string  `json:"algorithm,omitempty"`
+	MyKeyID   string `json:"myKeyId"`
+	TheirKey  []byte `json:"theirKey"`
+	Algorithm string `json:"algorithm,omitempty"`
 }
 
 // DeriveKeyParams represents parameters for key derivation
@@ -111,33 +111,33 @@ type DeriveKeyParams struct {
 
 // JWK represents a JSON Web Key
 type JWK struct {
-	Kty string            `json:"kty"`
-	Kid string            `json:"kid,omitempty"`
-	Alg string            `json:"alg,omitempty"`
-	Use string            `json:"use,omitempty"`
-	
+	Kty string `json:"kty"`
+	Kid string `json:"kid,omitempty"`
+	Alg string `json:"alg,omitempty"`
+	Use string `json:"use,omitempty"`
+
 	// EC keys
 	Crv string `json:"crv,omitempty"`
 	X   string `json:"x,omitempty"`
 	Y   string `json:"y,omitempty"`
 	D   string `json:"d,omitempty"`
-	
+
 	// RSA keys
 	N string `json:"n,omitempty"`
 	E string `json:"e,omitempty"`
 	P string `json:"p,omitempty"`
 	Q string `json:"q,omitempty"`
-	
+
 	// Symmetric keys
 	K string `json:"k,omitempty"`
-	
+
 	// Additional fields
-	Ext bool              `json:"ext,omitempty"`
-	KeyOps []string       `json:"key_ops,omitempty"`
-	X5c []string          `json:"x5c,omitempty"`
-	X5t string            `json:"x5t,omitempty"`
-	X5u string            `json:"x5u,omitempty"`
-	X5tS256 string        `json:"x5t#S256,omitempty"`
+	Ext     bool     `json:"ext,omitempty"`
+	KeyOps  []string `json:"key_ops,omitempty"`
+	X5c     []string `json:"x5c,omitempty"`
+	X5t     string   `json:"x5t,omitempty"`
+	X5u     string   `json:"x5u,omitempty"`
+	X5tS256 string   `json:"x5t#S256,omitempty"`
 }
 
 // EncryptedData represents encrypted data with metadata
@@ -152,9 +152,9 @@ type EncryptedData struct {
 
 // Recipient represents an encryption recipient
 type Recipient struct {
-	KeyID         string `json:"keyId,omitempty"`
-	EncryptedKey  []byte `json:"encryptedKey,omitempty"`
-	Header        map[string]interface{} `json:"header,omitempty"`
+	KeyID        string                 `json:"keyId,omitempty"`
+	EncryptedKey []byte                 `json:"encryptedKey,omitempty"`
+	Header       map[string]interface{} `json:"header,omitempty"`
 }
 
 // KeyAlgorithmMapping maps our KeyType to Askar KeyAlgorithm

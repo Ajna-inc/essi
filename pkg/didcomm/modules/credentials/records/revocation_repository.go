@@ -3,7 +3,7 @@ package records
 import (
 	"context"
 	"fmt"
-	
+
 	agentcontext "github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/storage"
 )
@@ -14,7 +14,7 @@ type RevocationRegistryRepository interface {
 	SavePublic(ctx *agentcontext.AgentContext, record *RevocationRegistryDefinitionRecord) error
 	FindPublicByRegistryId(ctx *agentcontext.AgentContext, registryId string) (*RevocationRegistryDefinitionRecord, error)
 	FindAllPublicByCredDefId(ctx *agentcontext.AgentContext, credDefId string) ([]*RevocationRegistryDefinitionRecord, error)
-	
+
 	// Private registry methods
 	SavePrivate(ctx *agentcontext.AgentContext, record *RevocationRegistryDefinitionPrivateRecord) error
 	FindPrivateByRegistryId(ctx *agentcontext.AgentContext, registryId string) (*RevocationRegistryDefinitionPrivateRecord, error)
@@ -49,50 +49,50 @@ func (r *AskarRevocationRepository) SavePublic(ctx *agentcontext.AgentContext, r
 	if record.BaseRecord.Type == "" {
 		record.BaseRecord.Type = "RevocationRegistryDefinitionRecord"
 	}
-	
+
 	// Set tags for querying
 	record.BaseRecord.SetTag("revocationRegistryDefinitionId", record.RevocationRegistryDefinitionId)
 	record.BaseRecord.SetTag("credentialDefinitionId", record.CredentialDefinitionId)
-	
+
 	return r.storage.Save(ctx.Context, record)
 }
 
 // FindPublicByRegistryId finds a public registry by ID
 func (r *AskarRevocationRepository) FindPublicByRegistryId(ctx *agentcontext.AgentContext, registryId string) (*RevocationRegistryDefinitionRecord, error) {
 	query := storage.NewQuery().WithTag("revocationRegistryDefinitionId", registryId)
-	
+
 	record, err := r.storage.FindSingleByQuery(ctx.Context, "RevocationRegistryDefinitionRecord", *query)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if regRecord, ok := record.(*RevocationRegistryDefinitionRecord); ok {
 		return regRecord, nil
 	}
-	
+
 	// Fallback deserialization
 	data, err := record.ToJSON()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get record data: %w", err)
 	}
-	
+
 	var regRecord RevocationRegistryDefinitionRecord
 	if err := regRecord.FromJSON(data); err != nil {
 		return nil, fmt.Errorf("failed to deserialize record: %w", err)
 	}
-	
+
 	return &regRecord, nil
 }
 
 // FindAllPublicByCredDefId finds all public registries for a credential definition
 func (r *AskarRevocationRepository) FindAllPublicByCredDefId(ctx *agentcontext.AgentContext, credDefId string) ([]*RevocationRegistryDefinitionRecord, error) {
 	query := storage.NewQuery().WithTag("credentialDefinitionId", credDefId)
-	
+
 	records, err := r.storage.FindByQuery(ctx.Context, "RevocationRegistryDefinitionRecord", *query)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var result []*RevocationRegistryDefinitionRecord
 	for _, record := range records {
 		if regRecord, ok := record.(*RevocationRegistryDefinitionRecord); ok {
@@ -103,7 +103,7 @@ func (r *AskarRevocationRepository) FindAllPublicByCredDefId(ctx *agentcontext.A
 			if err != nil {
 				continue
 			}
-			
+
 			var regRecord RevocationRegistryDefinitionRecord
 			if err := regRecord.FromJSON(data); err != nil {
 				continue
@@ -111,7 +111,7 @@ func (r *AskarRevocationRepository) FindAllPublicByCredDefId(ctx *agentcontext.A
 			result = append(result, &regRecord)
 		}
 	}
-	
+
 	return result, nil
 }
 
@@ -120,39 +120,39 @@ func (r *AskarRevocationRepository) SavePrivate(ctx *agentcontext.AgentContext, 
 	if record.BaseRecord.Type == "" {
 		record.BaseRecord.Type = "RevocationRegistryDefinitionPrivateRecord"
 	}
-	
+
 	// Set tags for querying
 	record.BaseRecord.SetTag("revocationRegistryDefinitionId", record.RevocationRegistryDefinitionId)
 	record.BaseRecord.SetTag("credentialDefinitionId", record.CredentialDefinitionId)
 	record.BaseRecord.SetTag("state", string(record.State))
-	
+
 	return r.storage.Save(ctx.Context, record)
 }
 
 // FindPrivateByRegistryId finds a private registry by ID
 func (r *AskarRevocationRepository) FindPrivateByRegistryId(ctx *agentcontext.AgentContext, registryId string) (*RevocationRegistryDefinitionPrivateRecord, error) {
 	query := storage.NewQuery().WithTag("revocationRegistryDefinitionId", registryId)
-	
+
 	record, err := r.storage.FindSingleByQuery(ctx.Context, "RevocationRegistryDefinitionPrivateRecord", *query)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if regRecord, ok := record.(*RevocationRegistryDefinitionPrivateRecord); ok {
 		return regRecord, nil
 	}
-	
+
 	// Fallback deserialization
 	data, err := record.ToJSON()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get record data: %w", err)
 	}
-	
+
 	var regRecord RevocationRegistryDefinitionPrivateRecord
 	if err := regRecord.FromJSON(data); err != nil {
 		return nil, fmt.Errorf("failed to deserialize record: %w", err)
 	}
-	
+
 	return &regRecord, nil
 }
 
@@ -161,27 +161,27 @@ func (r *AskarRevocationRepository) FindActivePrivateByCredDefId(ctx *agentconte
 	query := storage.NewQuery().
 		WithTag("credentialDefinitionId", credDefId).
 		WithTag("state", string(RevocationStateActive))
-	
+
 	record, err := r.storage.FindSingleByQuery(ctx.Context, "RevocationRegistryDefinitionPrivateRecord", *query)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if regRecord, ok := record.(*RevocationRegistryDefinitionPrivateRecord); ok {
 		return regRecord, nil
 	}
-	
+
 	// Fallback deserialization
 	data, err := record.ToJSON()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get record data: %w", err)
 	}
-	
+
 	var regRecord RevocationRegistryDefinitionPrivateRecord
 	if err := regRecord.FromJSON(data); err != nil {
 		return nil, fmt.Errorf("failed to deserialize record: %w", err)
 	}
-	
+
 	return &regRecord, nil
 }
 
@@ -189,6 +189,6 @@ func (r *AskarRevocationRepository) FindActivePrivateByCredDefId(ctx *agentconte
 func (r *AskarRevocationRepository) UpdatePrivate(ctx *agentcontext.AgentContext, record *RevocationRegistryDefinitionPrivateRecord) error {
 	// Update tags
 	record.BaseRecord.SetTag("state", string(record.State))
-	
+
 	return r.storage.Update(ctx.Context, record)
 }

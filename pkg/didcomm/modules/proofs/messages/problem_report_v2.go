@@ -10,7 +10,7 @@ const ProblemReportV2Type = "https://didcomm.org/present-proof/2.0/problem-repor
 // ProblemDescription represents the description of a problem
 type ProblemDescription struct {
 	Code        models.PresentationProblemReportReason `json:"code"`
-	Description string                                  `json:"en,omitempty"`
+	Description string                                 `json:"en,omitempty"`
 }
 
 // ProblemReportV2 represents a problem report message for V2 protocol

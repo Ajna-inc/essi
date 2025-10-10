@@ -19,5 +19,3 @@ func AnonCredsRegistryFactory() func(di.DependencyManager) regsvc.Registry {
 		return NewRegistry(l)
 	}
 }
-
-

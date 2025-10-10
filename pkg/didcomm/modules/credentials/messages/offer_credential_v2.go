@@ -40,25 +40,25 @@ func NewOfferCredentialV2() *OfferCredentialV2 {
 func (m *OfferCredentialV2) ToJSON() ([]byte, error) {
 	// Create a map to combine BaseMessage fields with offer-specific fields
 	result := make(map[string]interface{})
-	
+
 	// First get BaseMessage fields
 	baseJSON, err := m.BaseMessage.ToJSON()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Unmarshal BaseMessage to map
 	if err := json.Unmarshal(baseJSON, &result); err != nil {
 		return nil, err
 	}
-	
+
 	// Add offer-specific fields
 	result["formats"] = m.Formats
 	result["offers~attach"] = m.OffersAttach
 	if m.CredentialPreview != nil {
 		result["credential_preview"] = m.CredentialPreview
 	}
-	
+
 	// Marshal the complete map
 	return json.Marshal(result)
 }

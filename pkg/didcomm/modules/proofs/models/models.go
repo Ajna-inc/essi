@@ -29,10 +29,10 @@ type AutoAcceptProof string
 const (
 	// AutoAcceptAlways always auto-accepts the proof
 	AutoAcceptAlways AutoAcceptProof = "always"
-	
+
 	// AutoAcceptContentApproved auto-accepts if the content is approved
 	AutoAcceptContentApproved AutoAcceptProof = "contentApproved"
-	
+
 	// AutoAcceptNever never auto-accepts
 	AutoAcceptNever AutoAcceptProof = "never"
 )

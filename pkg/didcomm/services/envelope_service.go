@@ -13,11 +13,11 @@ import (
 	"github.com/ajna-inc/essi/pkg/core/context"
 	cryptoapi "github.com/ajna-inc/essi/pkg/core/crypto"
 	"github.com/ajna-inc/essi/pkg/core/di"
-	"github.com/ajna-inc/essi/pkg/core/logger"
 	"github.com/ajna-inc/essi/pkg/core/encoding"
+	"github.com/ajna-inc/essi/pkg/core/logger"
 	"github.com/ajna-inc/essi/pkg/core/utils"
 	"github.com/ajna-inc/essi/pkg/core/wallet"
-	//peer "github.com/ajna-inc/essi/pkg/dids/methods/peer"
+	peer "github.com/ajna-inc/essi/pkg/dids/methods/peer"
 )
 
 // getLoggerFromCtx resolves a logger from DI
@@ -37,6 +37,8 @@ type EnvelopeService struct {
 	agentContext *context.AgentContext
 	senderKey    []byte
 	typedDI      di.DependencyManager
+	// test-only: controls kid emission format (""=base58 default, "didkey", "didkey#fragment", "base64url")
+	kidFormat string
 }
 
 // NewEnvelopeService creates a new envelope service
@@ -53,6 +55,10 @@ func (es *EnvelopeService) SetTypedDI(dm di.DependencyManager) { es.typedDI = dm
 func (es *EnvelopeService) SetSenderKey(key []byte) {
 	es.senderKey = key
 }
+
+// SetKidFormatForTesting sets preferred kid emission format for tests.
+// Accepted: "", "didkey", "didkey#fragment", "base64url"
+func (es *EnvelopeService) SetKidFormatForTesting(format string) { es.kidFormat = format }
 
 // EnvelopeKeys represents keys for envelope encryption/decryption
 type EnvelopeKeys struct {
@@ -177,7 +183,7 @@ func (es *EnvelopeService) decryptMessage(encryptedMessage *EncryptedMessage) (*
 	var recipientKey *wallet.Key
 	var recipient *JWERecipient
 
-	// Helper to decode kid in multiple formats to raw Ed25519 (32 bytes)
+	// Helper to decode kid in multiple formats to raw 32-byte Ed25519 key
 	decodeKid := func(kid string) ([]byte, error) {
 		// Strip optional fragment (e.g., did:key:...#<fingerprint> or #<fingerprint>)
 		if idx := strings.Index(kid, "#"); idx != -1 {
@@ -203,12 +209,12 @@ func (es *EnvelopeService) decryptMessage(encryptedMessage *EncryptedMessage) (*
 		if strings.HasPrefix(kid, "did:key:") {
 			return es.extractBase58KeyFromDIDKey([]byte(kid))
 		}
-		// base58 form
-		if raw, err := encoding.DecodeBase58(kid); err == nil {
+		// base58 form (preferred before base64url for DIDComm v1 parity with Credo-TS)
+		if raw, err := encoding.DecodeBase58(kid); err == nil && len(raw) == 32 {
 			return raw, nil
 		}
-		// base64url form
-		if raw, err := base64.RawURLEncoding.DecodeString(kid); err == nil {
+		// base64url form (only accept if it decodes to 32 bytes)
+		if raw, err := base64.RawURLEncoding.DecodeString(kid); err == nil && len(raw) == 32 {
 			return raw, nil
 		}
 		return nil, fmt.Errorf("unsupported kid format")
@@ -503,8 +509,22 @@ func (es *EnvelopeService) packAnoncrypt(messageBytes []byte, to []string) (*Enc
 		lg.Debugf("✅ Extracted raw Ed25519 key[%d]: %x (length: %d)", i, rawKey, len(rawKey))
 		actualRecipientKeys = append(actualRecipientKeys, rawKey)
 		recipientKeyIds = append(recipientKeyIds, toField)
-		// Per Credo-TS (DIDComm V1), kid must be the base58-encoded Ed25519 public key
+		// Per Credo-TS (DIDComm V1), kid defaults to base58, but tests may override for parity checks
 		kid := encoding.EncodeBase58(rawKey)
+		if es.kidFormat != "" {
+			switch es.kidFormat {
+			case "didkey":
+				if fp, err := peer.Ed25519Fingerprint(rawKey); err == nil {
+					kid = "did:key:" + fp
+				}
+			case "didkey#fragment":
+				if fp, err := peer.Ed25519Fingerprint(rawKey); err == nil {
+					kid = "did:key:" + fp + "#" + fp
+				}
+			case "base64url":
+				kid = base64.RawURLEncoding.EncodeToString(rawKey)
+			}
+		}
 		lg.Debugf("🔑 Derived kid[%d] (base58): %s", i, kid)
 		recipientKids = append(recipientKids, kid)
 	}
@@ -682,8 +702,23 @@ func (es *EnvelopeService) packAuthcrypt(messageBytes []byte, to []string) (*Enc
 			continue
 		}
 		actualRecipientKeys = append(actualRecipientKeys, rawKey)
-		// For DIDComm v1 Authcrypt, kid should be base58 verkey (AFJ/Credo-Askar expectation)
-		recipientKids = append(recipientKids, encoding.EncodeBase58(rawKey))
+		// For DIDComm v1 Authcrypt, kid base58 by default; allow test override
+		kid := encoding.EncodeBase58(rawKey)
+		if es.kidFormat != "" {
+			switch es.kidFormat {
+			case "didkey":
+				if fp, err := peer.Ed25519Fingerprint(rawKey); err == nil {
+					kid = "did:key:" + fp
+				}
+			case "didkey#fragment":
+				if fp, err := peer.Ed25519Fingerprint(rawKey); err == nil {
+					kid = "did:key:" + fp + "#" + fp
+				}
+			case "base64url":
+				kid = base64.RawURLEncoding.EncodeToString(rawKey)
+			}
+		}
+		recipientKids = append(recipientKids, kid)
 	}
 
 	if len(actualRecipientKeys) == 0 {

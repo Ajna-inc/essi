@@ -98,6 +98,7 @@ const (
 	EventDidExchangeResponse    = "didexchange.response"
 	EventDidExchangeComplete    = "didexchange.complete"
 	EventProblemReport          = "problem.report"
+	MediationStateChanged       = "mediation.stateChanged"
 )
 
 // AgentEventTypes - exact parity with Credo TS

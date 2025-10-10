@@ -37,7 +37,7 @@ type MediationRecord struct {
 	Default       bool           `json:"default"`
 	CreatedAt     time.Time      `json:"createdAt"`
 	UpdatedAt     time.Time      `json:"updatedAt"`
-	
+
 	// Metadata for additional information
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 	Tags     map[string]string      `json:"tags,omitempty"`

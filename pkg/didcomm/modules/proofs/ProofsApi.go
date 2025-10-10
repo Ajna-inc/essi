@@ -46,11 +46,11 @@ type RequestProofOptions struct {
 }
 
 type AcceptRequestOptions struct {
-	ProofRecordId     string
-	ProofFormats      map[string]interface{}
-	Comment           string
-	UseReturnRoute    bool
-	AutoAcceptProof   models.AutoAcceptProof
+	ProofRecordId   string
+	ProofFormats    map[string]interface{}
+	Comment         string
+	UseReturnRoute  bool
+	AutoAcceptProof models.AutoAcceptProof
 }
 
 type AcceptPresentationOptions struct {
@@ -104,25 +104,35 @@ func (api *ProofsApi) Initialize() {
 	// Initialize repository via typed DI token - REQUIRED, no fallback
 	if api.typedDI != nil {
 		if any, err := api.typedDI.Resolve(di.TokenProofsRepository); err == nil {
-			if repo, ok := any.(records.Repository); ok { api.proofRepository = repo }
+			if repo, ok := any.(records.Repository); ok {
+				api.proofRepository = repo
+			}
 		}
 	}
-	if api.proofRepository == nil { 
+	if api.proofRepository == nil {
 		// Repository is required - will be initialized by ProofsModule with StorageService
 		// If missing, methods will check and return appropriate errors
 	}
 	// Resolve connection service via typed DI
 	if api.typedDI != nil {
-		if any, err := api.typedDI.Resolve(di.TokenConnectionService); err == nil { api.connectionService, _ = any.(*connServices.ConnectionService) }
-		if any, err := api.typedDI.Resolve(di.TokenMessageSender); err == nil { api.messageSender, _ = any.(*transport.MessageSender) }
+		if any, err := api.typedDI.Resolve(di.TokenConnectionService); err == nil {
+			api.connectionService, _ = any.(*connServices.ConnectionService)
+		}
+		if any, err := api.typedDI.Resolve(di.TokenMessageSender); err == nil {
+			api.messageSender, _ = any.(*transport.MessageSender)
+		}
 	}
 	// Register protocols
-	for _, proto := range api.config.ProofProtocols { api.protocols[proto.Version()] = proto }
+	for _, proto := range api.config.ProofProtocols {
+		api.protocols[proto.Version()] = proto
+	}
 }
 
 // ProposeProof creates and sends a proof proposal
 func (api *ProofsApi) ProposeProof(options ProposeProofOptions) (*records.ProofRecord, error) {
-	if api.connectionService == nil { api.Initialize() }
+	if api.connectionService == nil {
+		api.Initialize()
+	}
 	if api.connectionService == nil {
 		return nil, fmt.Errorf("connection service not available")
 	}
@@ -170,7 +180,9 @@ func (api *ProofsApi) ProposeProof(options ProposeProofOptions) (*records.ProofR
 
 // AcceptProposal accepts a proof proposal and sends a request
 func (api *ProofsApi) AcceptProposal(options AcceptProposalOptions) (*records.ProofRecord, error) {
-	if api.connectionService == nil || api.messageSender == nil { api.Initialize() }
+	if api.connectionService == nil || api.messageSender == nil {
+		api.Initialize()
+	}
 	// Get proof record
 	proofRecord, err := api.proofRepository.GetById(api.context, options.ProofRecordId)
 	if err != nil {
@@ -211,7 +223,9 @@ func (api *ProofsApi) AcceptProposal(options AcceptProposalOptions) (*records.Pr
 
 // RequestProof creates and sends a proof request
 func (api *ProofsApi) RequestProof(options RequestProofOptions) (*records.ProofRecord, error) {
-	if api.connectionService == nil || api.messageSender == nil { api.Initialize() }
+	if api.connectionService == nil || api.messageSender == nil {
+		api.Initialize()
+	}
 	if api.connectionService == nil {
 		return nil, fmt.Errorf("connection service not available")
 	}
@@ -259,7 +273,9 @@ func (api *ProofsApi) RequestProof(options RequestProofOptions) (*records.ProofR
 
 // AcceptRequest accepts a proof request and sends a presentation
 func (api *ProofsApi) AcceptRequest(options AcceptRequestOptions) (*records.ProofRecord, error) {
-	if api.connectionService == nil || api.messageSender == nil { api.Initialize() }
+	if api.connectionService == nil || api.messageSender == nil {
+		api.Initialize()
+	}
 	// Get proof record
 	proofRecord, err := api.proofRepository.GetById(api.context, options.ProofRecordId)
 	if err != nil {
@@ -271,11 +287,11 @@ func (api *ProofsApi) AcceptRequest(options AcceptRequestOptions) (*records.Proo
 	}
 	// Accept request
 	updatedRecord, message, err := proto.AcceptRequest(api.context, protocol.AcceptProofRequestOptions{
-		ProofRecord:       proofRecord,
-		ProofFormats:      options.ProofFormats,
-		Comment:           options.Comment,
-		UseReturnRoute:    options.UseReturnRoute,
-		AutoAcceptProof:   options.AutoAcceptProof,
+		ProofRecord:     proofRecord,
+		ProofFormats:    options.ProofFormats,
+		Comment:         options.Comment,
+		UseReturnRoute:  options.UseReturnRoute,
+		AutoAcceptProof: options.AutoAcceptProof,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to accept request: %w", err)
@@ -301,7 +317,9 @@ func (api *ProofsApi) AcceptRequest(options AcceptRequestOptions) (*records.Proo
 
 // AcceptPresentation accepts a proof presentation
 func (api *ProofsApi) AcceptPresentation(options AcceptPresentationOptions) (*records.ProofRecord, error) {
-	if api.connectionService == nil || api.messageSender == nil { api.Initialize() }
+	if api.connectionService == nil || api.messageSender == nil {
+		api.Initialize()
+	}
 	// Get proof record
 	proofRecord, err := api.proofRepository.GetById(api.context, options.ProofRecordId)
 	if err != nil {
@@ -364,15 +382,15 @@ func (api *ProofsApi) DeclineRequest(options DeclineProofOptions) (*records.Proo
 				connection, _ := api.connectionService.FindById(proofRecord.ConnectionId)
 				if connection != nil {
 					if outboundCtx, err := outboundServices.GetOutboundMessageContext(
-				api.context,
-				outboundServices.GetOutboundMessageContextParams{
-					Message:          message,
-					ConnectionRecord: connection,
-					AssociatedRecord: proofRecord,
-				},
-			); err == nil {
-				api.messageSender.SendMessage(outboundCtx)
-			}
+						api.context,
+						outboundServices.GetOutboundMessageContextParams{
+							Message:          message,
+							ConnectionRecord: connection,
+							AssociatedRecord: proofRecord,
+						},
+					); err == nil {
+						api.messageSender.SendMessage(outboundCtx)
+					}
 				}
 			}
 		}

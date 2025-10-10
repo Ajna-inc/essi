@@ -41,7 +41,7 @@ func (r *ProofStorageRecord) GetTags() map[string]string {
 	if r.tags == nil {
 		r.tags = make(map[string]string)
 	}
-	
+
 	// Build tags from ProofRecord fields - matches credo-ts getTags()
 	r.tags["threadId"] = r.ThreadId
 	if r.ParentThreadId != "" {
@@ -52,12 +52,12 @@ func (r *ProofStorageRecord) GetTags() map[string]string {
 	}
 	r.tags["state"] = r.State
 	r.tags["role"] = r.Role
-	
+
 	// Add any additional tags from the Tags field
 	for k, v := range r.Tags {
 		r.tags[k] = v
 	}
-	
+
 	return r.tags
 }
 
@@ -103,17 +103,17 @@ func (r *ProofStorageRecord) Clone() storage.Record {
 	data, _ := json.Marshal(r.ProofRecord)
 	var cloned ProofRecord
 	json.Unmarshal(data, &cloned)
-	
+
 	newRecord := &ProofStorageRecord{
 		ProofRecord: &cloned,
 		tags:        make(map[string]string),
 	}
-	
+
 	// Copy tags
 	for k, v := range r.tags {
 		newRecord.tags[k] = v
 	}
-	
+
 	return newRecord
 }
 

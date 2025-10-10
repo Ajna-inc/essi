@@ -34,7 +34,7 @@ func (s *Service) GetRegistries() []Registry {
 func (s *Service) find(identifier string) (Registry, error) {
 	log.Printf("🔍 [RegistryService] Finding registry for identifier: %s", identifier)
 	log.Printf("🔍 [RegistryService] Number of registries: %d", len(s.registries))
-	
+
 	for _, r := range s.registries {
 		if rx := r.SupportedIdentifier(); rx != nil {
 			log.Printf("🔍 [RegistryService] Checking pattern %s against %s", rx.String(), identifier)

@@ -56,7 +56,7 @@ func AssertCredentialValuesMatch(actual map[string]interface{}, expected Credent
 		if !found {
 			return fmt.Errorf("credential is missing expected attribute '%s'", expectedName)
 		}
-		
+
 		// Handle the actual value which might be a map or a string
 		var actualRaw, actualEncoded string
 		switch v := actualValueRaw.(type) {
@@ -73,25 +73,25 @@ func AssertCredentialValuesMatch(actual map[string]interface{}, expected Credent
 		default:
 			return fmt.Errorf("invalid value type for attribute '%s'", expectedName)
 		}
-		
+
 		if actualRaw != expectedValue.Raw {
-			return fmt.Errorf("credential value mismatch for attribute '%s': expected '%s', got '%s'", 
+			return fmt.Errorf("credential value mismatch for attribute '%s': expected '%s', got '%s'",
 				expectedName, expectedValue.Raw, actualRaw)
 		}
-		
+
 		// If encoded is different from raw in expected, check it too
 		if expectedValue.Encoded != expectedValue.Raw && actualEncoded != expectedValue.Encoded {
 			return fmt.Errorf("credential encoded value mismatch for attribute '%s': expected '%s', got '%s'",
 				expectedName, expectedValue.Encoded, actualEncoded)
 		}
 	}
-	
+
 	for actualName := range actual {
 		if _, expected := expected[actualName]; !expected {
 			return fmt.Errorf("credential contains unexpected attribute '%s'", actualName)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -106,7 +106,7 @@ func AssertAttributesMatch(schema map[string]interface{}, attributes []Credentia
 	// Extract attribute names from schema
 	var schemaAttrSet map[string]bool
 	schemaAttrSet = make(map[string]bool)
-	
+
 	// Try different types for attrNames
 	if attrNames := schema["attrNames"]; attrNames != nil {
 		switch attrs := attrNames.(type) {
@@ -141,7 +141,7 @@ func AssertAttributesMatch(schema map[string]interface{}, attributes []Credentia
 	} else {
 		return fmt.Errorf("unable to extract attribute names from schema")
 	}
-	
+
 	for _, attr := range attributes {
 		if !schemaAttrSet[attr.Name] {
 			validAttrs := make([]string, 0, len(schemaAttrSet))
@@ -153,7 +153,7 @@ func AssertAttributesMatch(schema map[string]interface{}, attributes []Credentia
 				attr.Name, strings.Join(validAttrs, ", "))
 		}
 	}
-	
+
 	for schemaAttr := range schemaAttrSet {
 		found := false
 		for _, attr := range attributes {
@@ -166,7 +166,7 @@ func AssertAttributesMatch(schema map[string]interface{}, attributes []Credentia
 			return fmt.Errorf("required schema attribute '%s' is missing from preview", schemaAttr)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -176,7 +176,7 @@ func AssertAttributesMatchMap(schema map[string]interface{}, attributes map[stri
 	if schemaJSON, err := json.Marshal(schema); err == nil {
 		log.Printf("🔍 Schema structure for validation: %s", string(schemaJSON))
 	}
-	
+
 	// Convert map to slice of preview attributes
 	previewAttrs := make([]CredentialPreviewAttribute, 0, len(attributes))
 	for name, value := range attributes {

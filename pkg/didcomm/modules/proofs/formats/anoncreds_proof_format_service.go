@@ -9,8 +9,8 @@ import (
 	"github.com/ajna-inc/essi/pkg/anoncreds/registry"
 	"github.com/ajna-inc/essi/pkg/anoncreds/services"
 	"github.com/ajna-inc/essi/pkg/anoncreds/services/holder"
-	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/common"
+	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"
 	"github.com/ajna-inc/essi/pkg/didcomm/modules/proofs/records"
 )
@@ -193,9 +193,9 @@ func (s *AnonCredsProofFormatService) AcceptRequest(
 	proof, err := s.holderService.CreateProof(ctx, &services.CreateProofOptions{
 		ProofRequest:          proofRequest,
 		SelectedCredentials:   options.SelectedCredentials,
-		Schemas:              schemas,
+		Schemas:               schemas,
 		CredentialDefinitions: credDefs,
-		LinkSecretId:         "default",
+		LinkSecretId:          "default",
 	})
 	if err != nil {
 		return ProofFormatSpec{}, messages.AttachmentDecorator{}, err
@@ -255,7 +255,7 @@ func (s *AnonCredsProofFormatService) ProcessPresentation(
 	result, err := s.verifierService.VerifyProof(ctx, &services.VerifyProofOptions{
 		ProofRequest:          proofRequest,
 		Proof:                 proof,
-		Schemas:              schemas,
+		Schemas:               schemas,
 		CredentialDefinitions: credDefs,
 	})
 	if err != nil {
@@ -286,7 +286,7 @@ func (s *AnonCredsProofFormatService) GetCredentialsForRequest(
 
 	// Convert to ProofCredential format
 	var credentials []ProofCredential
-	
+
 	// Add credentials from attributes
 	for _, attrMatches := range matches.Attributes {
 		for _, match := range attrMatches {
@@ -333,8 +333,8 @@ func (s *AnonCredsProofFormatService) SelectCredentialsForRequest(
 
 	// Auto-select credentials
 	selected := map[string]interface{}{
-		"attributes": map[string]interface{}{},
-		"predicates": map[string]interface{}{},
+		"attributes":   map[string]interface{}{},
+		"predicates":   map[string]interface{}{},
 		"selfAttested": map[string]interface{}{},
 	}
 

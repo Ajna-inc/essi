@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/common"
+	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"
 	"github.com/ajna-inc/essi/pkg/didcomm/modules/proofs/formats"
-	"github.com/ajna-inc/essi/pkg/didcomm/modules/proofs/models"
 	proofmsgs "github.com/ajna-inc/essi/pkg/didcomm/modules/proofs/messages"
+	"github.com/ajna-inc/essi/pkg/didcomm/modules/proofs/models"
 	"github.com/ajna-inc/essi/pkg/didcomm/modules/proofs/protocol"
 	"github.com/ajna-inc/essi/pkg/didcomm/modules/proofs/records"
 	"github.com/ajna-inc/essi/pkg/didcomm/transport"
@@ -70,18 +70,18 @@ func (p *V2ProofProtocol) CreateProposal(
 		Metadata:        make(map[string]interface{}),
 		Tags:            make(map[string]string),
 	}
-	
+
 	// Create proposal message
 	proposal := proofmsgs.NewProposePresentationV2(common.GenerateUUID(), record.ThreadId)
 	proposal.Comment = options.Comment
-	
+
 	// Process formats
 	for formatKey, formatData := range options.ProofFormats {
 		service, ok := p.formatServices[formatKey]
 		if !ok {
 			continue
 		}
-		
+
 		spec, attachment, err := service.CreateProposal(ctx, formats.CreateProposalOptions{
 			ProofRecord:  record,
 			ProofFormats: map[string]interface{}{formatKey: formatData},
@@ -90,21 +90,21 @@ func (p *V2ProofProtocol) CreateProposal(
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create proposal for format %s: %w", formatKey, err)
 		}
-		
+
 		proposal.Formats = append(proposal.Formats, proofmsgs.AttachmentFormat{
 			AttachId: spec.AttachmentId,
 			Format:   spec.Format,
 		})
 		proposal.ProposalAttachments = append(proposal.ProposalAttachments, attachment)
 	}
-	
+
 	// Save record
 	if p.repository != nil {
 		if err := p.repository.Save(ctx, record); err != nil {
 			return nil, nil, fmt.Errorf("failed to save proof record: %w", err)
 		}
 	}
-	
+
 	return record, proposal, nil
 }
 
@@ -118,7 +118,7 @@ func (p *V2ProofProtocol) ProcessProposal(
 	if !ok {
 		return nil, fmt.Errorf("invalid message type for proposal")
 	}
-	
+
 	// Create proof record
 	record := &records.ProofRecord{
 		ID:              common.GenerateUUID(),
@@ -133,17 +133,17 @@ func (p *V2ProofProtocol) ProcessProposal(
 		Metadata:        make(map[string]interface{}),
 		Tags:            make(map[string]string),
 	}
-	
+
 	// Process proposal attachments
 	for i, format := range proposal.Formats {
 		service, ok := p.formatServices[format.Format]
 		if !ok {
 			continue
 		}
-		
+
 		if i < len(proposal.ProposalAttachments) {
 			attachment := proposal.ProposalAttachments[i]
-			
+
 			if err := service.ProcessProposal(ctx, formats.ProcessProposalOptions{
 				ProofRecord:        record,
 				ProposalMessage:    proposal,
@@ -153,14 +153,14 @@ func (p *V2ProofProtocol) ProcessProposal(
 			}
 		}
 	}
-	
+
 	// Save record
 	if p.repository != nil {
 		if err := p.repository.Save(ctx, record); err != nil {
 			return nil, fmt.Errorf("failed to save proof record: %w", err)
 		}
 	}
-	
+
 	return record, nil
 }
 
@@ -170,23 +170,23 @@ func (p *V2ProofProtocol) AcceptProposal(
 	options protocol.AcceptProofProposalOptions,
 ) (*records.ProofRecord, messages.AgentMessage, error) {
 	record := options.ProofRecord
-	
+
 	// Update state
 	record.State = string(models.ProofStateRequestSent)
 	record.UpdatedAt = time.Now()
-	
+
 	// Create request message
 	request := proofmsgs.NewRequestPresentationV2(common.GenerateUUID(), record.ThreadId)
 	request.Comment = options.Comment
 	request.WillConfirm = true
-	
+
 	// Process formats
 	for formatKey, formatData := range options.ProofFormats {
 		service, ok := p.formatServices[formatKey]
 		if !ok {
 			continue
 		}
-		
+
 		spec, attachment, err := service.CreateRequest(ctx, formats.CreateRequestOptions{
 			ProofRecord:  record,
 			ProofFormats: map[string]interface{}{formatKey: formatData},
@@ -194,21 +194,21 @@ func (p *V2ProofProtocol) AcceptProposal(
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create request for format %s: %w", formatKey, err)
 		}
-		
+
 		request.Formats = append(request.Formats, proofmsgs.AttachmentFormat{
 			AttachId: spec.AttachmentId,
 			Format:   spec.Format,
 		})
 		request.RequestPresentations = append(request.RequestPresentations, attachment)
 	}
-	
+
 	// Update record
 	if p.repository != nil {
 		if err := p.repository.Update(ctx, record); err != nil {
 			return nil, nil, fmt.Errorf("failed to update proof record: %w", err)
 		}
 	}
-	
+
 	return record, request, nil
 }
 
@@ -223,26 +223,26 @@ func (p *V2ProofProtocol) handleProposal(ctx *transport.InboundMessageContext) (
 	if err := json.Unmarshal(ctx.Raw, &proposal); err != nil {
 		return nil, fmt.Errorf("failed to parse proposal: %w", err)
 	}
-	
+
 	// Get connection ID from context
 	connectionId := ""
 	if ctx.Connection != nil {
 		connectionId = ctx.Connection.ID
 	}
-	
+
 	// Use the protocol's agent context
 	agentCtx := p.agentContext
-	
+
 	record, err := p.ProcessProposal(agentCtx, &proposal, connectionId)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Check auto-accept
 	if p.shouldAutoAcceptProposal(agentCtx, record) {
 		// Auto-accept logic here
 	}
-	
+
 	return nil, nil
 }
 
@@ -251,26 +251,26 @@ func (p *V2ProofProtocol) handleRequest(ctx *transport.InboundMessageContext) (m
 	if err := json.Unmarshal(ctx.Raw, &request); err != nil {
 		return nil, fmt.Errorf("failed to parse request: %w", err)
 	}
-	
+
 	// Get connection ID from context
 	connectionId := ""
 	if ctx.Connection != nil {
 		connectionId = ctx.Connection.ID
 	}
-	
+
 	// Use the protocol's agent context
 	agentCtx := p.agentContext
-	
+
 	record, err := p.ProcessRequest(agentCtx, &request, connectionId)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Check auto-accept
 	if p.shouldAutoAcceptRequest(agentCtx, record) {
 		// Auto-accept logic here
 	}
-	
+
 	return nil, nil
 }
 
@@ -279,26 +279,26 @@ func (p *V2ProofProtocol) handlePresentation(ctx *transport.InboundMessageContex
 	if err := json.Unmarshal(ctx.Raw, &presentation); err != nil {
 		return nil, fmt.Errorf("failed to parse presentation: %w", err)
 	}
-	
+
 	// Get connection ID from context
 	connectionId := ""
 	if ctx.Connection != nil {
 		connectionId = ctx.Connection.ID
 	}
-	
+
 	// Use the protocol's agent context
 	agentCtx := p.agentContext
-	
+
 	record, err := p.ProcessPresentation(agentCtx, &presentation, connectionId)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Check auto-accept
 	if p.shouldAutoAcceptPresentation(agentCtx, record) {
 		// Auto-accept logic here
 	}
-	
+
 	return nil, nil
 }
 
@@ -307,10 +307,10 @@ func (p *V2ProofProtocol) handleAck(ctx *transport.InboundMessageContext) (messa
 	if err := json.Unmarshal(ctx.Raw, &ack); err != nil {
 		return nil, fmt.Errorf("failed to parse ack: %w", err)
 	}
-	
+
 	// Use the protocol's agent context
 	agentCtx := p.agentContext
-	
+
 	_, err := p.ProcessAck(agentCtx, &ack)
 	return nil, err
 }
@@ -320,10 +320,10 @@ func (p *V2ProofProtocol) handleProblemReport(ctx *transport.InboundMessageConte
 	if err := json.Unmarshal(ctx.Raw, &report); err != nil {
 		return nil, fmt.Errorf("failed to parse problem report: %w", err)
 	}
-	
+
 	// Use the protocol's agent context
 	agentCtx := p.agentContext
-	
+
 	_, err := p.ProcessProblemReport(agentCtx, &report)
 	return nil, err
 }
@@ -387,19 +387,19 @@ func (p *V2ProofProtocol) CreateRequest(
 		Metadata:        make(map[string]interface{}),
 		Tags:            make(map[string]string),
 	}
-	
+
 	// Create request message
 	request := proofmsgs.NewRequestPresentationV2(common.GenerateUUID(), record.ThreadId)
 	request.Comment = options.Comment
 	request.WillConfirm = options.WillConfirm
-	
+
 	// Process formats
 	for formatKey, formatData := range options.ProofFormats {
 		service, ok := p.formatServices[formatKey]
 		if !ok {
 			continue
 		}
-		
+
 		spec, attachment, err := service.CreateRequest(ctx, formats.CreateRequestOptions{
 			ProofRecord:  record,
 			ProofFormats: map[string]interface{}{formatKey: formatData},
@@ -407,21 +407,21 @@ func (p *V2ProofProtocol) CreateRequest(
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create request for format %s: %w", formatKey, err)
 		}
-		
+
 		request.Formats = append(request.Formats, proofmsgs.AttachmentFormat{
 			AttachId: spec.AttachmentId,
 			Format:   spec.Format,
 		})
 		request.RequestPresentations = append(request.RequestPresentations, attachment)
 	}
-	
+
 	// Save record
 	if p.repository != nil {
 		if err := p.repository.Save(ctx, record); err != nil {
 			return nil, nil, fmt.Errorf("failed to save proof record: %w", err)
 		}
 	}
-	
+
 	return record, request, nil
 }
 
@@ -504,18 +504,18 @@ func (p *V2ProofProtocol) GetCredentialsForRequest(
 			break
 		}
 	}
-	
+
 	service, err := p.GetFormatService(formatId)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Get proof record from repository
 	rec := options.ProofRecord
 	if rec == nil {
 		return nil, fmt.Errorf("proof record not provided")
 	}
-	
+
 	// Create attachment from proof request
 	var requestData interface{}
 	if rec.ProofFormats != nil {
@@ -541,18 +541,18 @@ func (p *V2ProofProtocol) SelectCredentialsForRequest(
 			break
 		}
 	}
-	
+
 	service, err := p.GetFormatService(formatId)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Get proof record from repository
 	rec := options.ProofRecord
 	if rec == nil {
 		return nil, fmt.Errorf("proof record not provided")
 	}
-	
+
 	// Create attachment from proof request
 	var requestData interface{}
 	if rec.ProofFormats != nil {
@@ -563,7 +563,7 @@ func (p *V2ProofProtocol) SelectCredentialsForRequest(
 		jsonData, _ = requestData.(map[string]interface{})
 	}
 	attach := messages.AttachmentDecorator{Data: &messages.AttachmentData{Json: jsonData}}
-	
+
 	// For now, return empty credentials map
 	var credentials []formats.ProofCredential
 	return service.SelectCredentialsForRequest(ctx, formats.SelectCredentialsOptions{ProofRecord: rec, RequestAttachment: attach, Credentials: credentials})

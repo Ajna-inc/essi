@@ -76,4 +76,3 @@ func TestUnmarshalServicesStringAndObject(t *testing.T) {
 		t.Fatalf("unexpected handshake protocols: %#v", inv.Handshake)
 	}
 }
-

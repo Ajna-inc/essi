@@ -5,8 +5,8 @@ import (
 
 	corectx "github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/di"
-	coreevents "github.com/ajna-inc/essi/pkg/core/events"
 	"github.com/ajna-inc/essi/pkg/core/encoding"
+	coreevents "github.com/ajna-inc/essi/pkg/core/events"
 	"github.com/ajna-inc/essi/pkg/core/wallet"
 	services "github.com/ajna-inc/essi/pkg/didcomm/modules/connections/services"
 	oob "github.com/ajna-inc/essi/pkg/didcomm/modules/oob"

@@ -28,8 +28,8 @@ type CreateProposalOptions struct {
 
 // ProcessProposalOptions contains options for processing a proposal
 type ProcessProposalOptions struct {
-	ProofRecord       *records.ProofRecord
-	ProposalMessage   messages.AgentMessage
+	ProofRecord        *records.ProofRecord
+	ProposalMessage    messages.AgentMessage
 	ProposalAttachment messages.AttachmentDecorator
 }
 
@@ -55,9 +55,9 @@ type ProcessRequestOptions struct {
 
 // AcceptRequestOptions contains options for accepting a request
 type AcceptRequestOptions struct {
-	ProofRecord          *records.ProofRecord
-	RequestAttachment    messages.AttachmentDecorator
-	SelectedCredentials  map[string]interface{}
+	ProofRecord         *records.ProofRecord
+	RequestAttachment   messages.AttachmentDecorator
+	SelectedCredentials map[string]interface{}
 }
 
 // ProcessPresentationOptions contains options for processing a presentation
@@ -85,78 +85,78 @@ type SelectCredentialsOptions struct {
 type ProofFormatService interface {
 	// FormatKey returns the unique format key for this service
 	FormatKey() string
-	
+
 	// SupportsFormat checks if this service supports a given format
 	SupportsFormat(format string) bool
-	
+
 	// CreateProposal creates a proposal attachment
 	CreateProposal(
 		ctx *context.AgentContext,
 		options CreateProposalOptions,
 	) (ProofFormatSpec, messages.AttachmentDecorator, error)
-	
+
 	// ProcessProposal processes a proposal attachment
 	ProcessProposal(
 		ctx *context.AgentContext,
 		options ProcessProposalOptions,
 	) error
-	
+
 	// AcceptProposal accepts a proposal and creates a request
 	AcceptProposal(
 		ctx *context.AgentContext,
 		options AcceptProposalOptions,
 	) (ProofFormatSpec, messages.AttachmentDecorator, error)
-	
+
 	// CreateRequest creates a request attachment
 	CreateRequest(
 		ctx *context.AgentContext,
 		options CreateRequestOptions,
 	) (ProofFormatSpec, messages.AttachmentDecorator, error)
-	
+
 	// ProcessRequest processes a request attachment
 	ProcessRequest(
 		ctx *context.AgentContext,
 		options ProcessRequestOptions,
 	) error
-	
+
 	// AcceptRequest accepts a request and creates a presentation
 	AcceptRequest(
 		ctx *context.AgentContext,
 		options AcceptRequestOptions,
 	) (ProofFormatSpec, messages.AttachmentDecorator, error)
-	
+
 	// ProcessPresentation processes and verifies a presentation
 	ProcessPresentation(
 		ctx *context.AgentContext,
 		options ProcessPresentationOptions,
 	) (bool, error)
-	
+
 	// GetCredentialsForRequest gets credentials that can satisfy a request
 	GetCredentialsForRequest(
 		ctx *context.AgentContext,
 		options GetCredentialsOptions,
 	) ([]ProofCredential, error)
-	
+
 	// SelectCredentialsForRequest automatically selects credentials
 	SelectCredentialsForRequest(
 		ctx *context.AgentContext,
 		options SelectCredentialsOptions,
 	) (map[string]interface{}, error)
-	
+
 	// ShouldAutoRespondToProposal checks if should auto-respond to proposal
 	ShouldAutoRespondToProposal(
 		ctx *context.AgentContext,
 		proofRecord *records.ProofRecord,
 		proposalAttachment messages.AttachmentDecorator,
 	) bool
-	
+
 	// ShouldAutoRespondToRequest checks if should auto-respond to request
 	ShouldAutoRespondToRequest(
 		ctx *context.AgentContext,
 		proofRecord *records.ProofRecord,
 		requestAttachment messages.AttachmentDecorator,
 	) bool
-	
+
 	// ShouldAutoRespondToPresentation checks if should auto-respond to presentation
 	ShouldAutoRespondToPresentation(
 		ctx *context.AgentContext,

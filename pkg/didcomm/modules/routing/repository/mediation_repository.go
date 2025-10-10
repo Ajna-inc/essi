@@ -143,6 +143,9 @@ func mediationRecordToStorage(mr *records.MediationRecord) storage.Record {
 
 // Helper to convert storage.Record back to MediationRecord
 func storageToMediationRecord(sr storage.Record) *records.MediationRecord {
+    if sr == nil {
+        return nil
+    }
 	// Check if it's already a MediationStorageRecord
 	if msr, ok := sr.(*records.MediationStorageRecord); ok {
 		return msr.MediationRecord

@@ -2,14 +2,14 @@ package repository
 
 import (
 	"encoding/json"
-	
+
 	"github.com/ajna-inc/essi/pkg/core/storage"
 )
 
 // LinkSecretRecord stores link secret information
 type LinkSecretRecord struct {
 	*storage.BaseRecord
-	
+
 	LinkSecretId string `json:"linkSecretId"`
 	Value        string `json:"value,omitempty"` // The actual link secret value (optional)
 	IsDefault    bool   `json:"isDefault"`

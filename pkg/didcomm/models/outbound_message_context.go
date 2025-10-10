@@ -2,7 +2,7 @@ package models
 
 import (
 	"fmt"
-	
+
 	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"
 	"github.com/ajna-inc/essi/pkg/didcomm/modules/connections/services"
@@ -11,9 +11,9 @@ import (
 
 // ServiceMessageParams contains parameters for sending service messages
 type ServiceMessageParams struct {
-	SenderKey    string                // The sender's public key
-	Service      *ResolvedDidCommService // The resolved DIDComm service
-	ReturnRoute  bool                  // Whether to request return routing
+	SenderKey   string                  // The sender's public key
+	Service     *ResolvedDidCommService // The resolved DIDComm service
+	ReturnRoute bool                    // Whether to request return routing
 }
 
 // ResolvedDidCommService represents a resolved DIDComm service endpoint
@@ -66,13 +66,13 @@ func (ctx *OutboundMessageContext) AssertReadyConnection() (*services.Connection
 	if ctx.Connection == nil {
 		return nil, fmt.Errorf("no connection associated with outgoing message %s", ctx.Message.GetType())
 	}
-	
+
 	// Make sure connection is ready (at least responded state)
-	if ctx.Connection.State != services.ConnectionStateResponded && 
-	   ctx.Connection.State != services.ConnectionStateComplete {
+	if ctx.Connection.State != services.ConnectionStateResponded &&
+		ctx.Connection.State != services.ConnectionStateComplete {
 		return nil, fmt.Errorf("connection %s is not ready (state: %s)", ctx.Connection.ID, ctx.Connection.State)
 	}
-	
+
 	return ctx.Connection, nil
 }
 

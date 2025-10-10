@@ -10,10 +10,10 @@ import (
 // ConnectionProblemReportMessage represents a connection problem report
 type ConnectionProblemReportMessage struct {
 	*messages.BaseMessage
-	
+
 	// Problem code - standardized error codes
 	ProblemCode string `json:"problem-code"`
-	
+
 	// Human-readable explanation
 	Explain string `json:"explain,omitempty"`
 }
@@ -26,16 +26,16 @@ const (
 
 // Connection problem codes following credo-ts
 const (
-	ConnectionProblemReportReasonRequestNotAccepted = "request_not_accepted"
-	ConnectionProblemReportReasonRequestProcessingError = "request_processing_error"
-	ConnectionProblemReportReasonResponseNotAccepted = "response_not_accepted" 
+	ConnectionProblemReportReasonRequestNotAccepted      = "request_not_accepted"
+	ConnectionProblemReportReasonRequestProcessingError  = "request_processing_error"
+	ConnectionProblemReportReasonResponseNotAccepted     = "response_not_accepted"
 	ConnectionProblemReportReasonResponseProcessingError = "response_processing_error"
 )
 
 // NewConnectionProblemReportMessage creates a new problem report
 func NewConnectionProblemReportMessage(problemCode string, explain string) *ConnectionProblemReportMessage {
 	baseMessage := messages.NewBaseMessage(ConnectionProblemReportType)
-	
+
 	return &ConnectionProblemReportMessage{
 		BaseMessage: baseMessage,
 		ProblemCode: problemCode,
@@ -46,14 +46,14 @@ func NewConnectionProblemReportMessage(problemCode string, explain string) *Conn
 // NewConnectionProblemReportFromMessage creates a problem report in response to another message
 func NewConnectionProblemReportFromMessage(originalMessage messages.MessageInterface, problemCode string, explain string) *ConnectionProblemReportMessage {
 	problemReport := NewConnectionProblemReportMessage(problemCode, explain)
-	
+
 	// Set threading to reference the original message
 	if originalMessage.GetThreadId() != "" {
 		problemReport.SetThreadId(originalMessage.GetThreadId())
 	} else {
 		problemReport.SetThreadId(originalMessage.GetId())
 	}
-	
+
 	return problemReport
 }
 
@@ -82,16 +82,16 @@ func (m *ConnectionProblemReportMessage) Validate() error {
 	if err := m.BaseMessage.Validate(); err != nil {
 		return err
 	}
-	
+
 	if m.ProblemCode == "" {
 		return fmt.Errorf("problem report must have a problem code")
 	}
-	
+
 	// Problem reports should reference the original thread
 	if m.GetThreadId() == "" {
 		return fmt.Errorf("problem report must reference a thread")
 	}
-	
+
 	return nil
 }
 
@@ -112,6 +112,6 @@ func (m *ConnectionProblemReportMessage) Clone() messages.MessageInterface {
 		ProblemCode: m.ProblemCode,
 		Explain:     m.Explain,
 	}
-	
+
 	return clone
 }

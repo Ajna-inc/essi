@@ -57,6 +57,8 @@ var (
 	TokenCredentialsRepository       = Token{Name: "Credentials.Repository"}
 	TokenCredentialAutoAcceptService = Token{Name: "Credentials.AutoAcceptService"}
 	TokenMediatorService             = Token{Name: "MediatorService"}
+	TokenMediationRepository         = Token{Name: "MediationRepository"}
+	TokenMediationRecipientApi       = Token{Name: "MediationRecipientApi"}
 	TokenProofsService               = Token{Name: "Proofs.Service"}
 
 	// AnonCreds typed services

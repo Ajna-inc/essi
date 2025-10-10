@@ -193,14 +193,14 @@ func (r *AskarDidRepository) Update(ctx *agentcontext.AgentContext, record *DidR
 	tags := record.GetTags()
 	tags["did"] = record.Did
 	tags["role"] = string(record.Role)
-	
+
 	if parsed := parseDid(record.Did); parsed != nil {
 		tags["method"] = parsed.Method
 		tags["methodSpecificIdentifier"] = parsed.Id
 	}
-	
+
 	record.SetTags(tags)
-	
+
 	return r.storage.Update(context.Background(), record)
 }
 

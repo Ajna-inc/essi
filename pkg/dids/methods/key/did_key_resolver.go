@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/ajna-inc/essi/pkg/core/context"
-	dids "github.com/ajna-inc/essi/pkg/dids"
 	"github.com/ajna-inc/essi/pkg/core/encoding"
+	dids "github.com/ajna-inc/essi/pkg/dids"
 )
 
 // DidKeyResolver implements DID resolution for the did:key method

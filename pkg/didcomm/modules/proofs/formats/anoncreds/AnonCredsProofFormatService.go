@@ -24,19 +24,19 @@ const (
 
 // AnonCredsProofRequest represents an AnonCreds proof request
 type AnonCredsProofRequest struct {
-	Name                string                          `json:"name"`
-	Version             string                          `json:"version"`
-	Nonce               string                          `json:"nonce"`
-	RequestedAttributes map[string]RequestedAttribute   `json:"requested_attributes"`
-	RequestedPredicates map[string]RequestedPredicate   `json:"requested_predicates"`
-	NonRevoked          *NonRevokedInterval             `json:"non_revoked,omitempty"`
+	Name                string                        `json:"name"`
+	Version             string                        `json:"version"`
+	Nonce               string                        `json:"nonce"`
+	RequestedAttributes map[string]RequestedAttribute `json:"requested_attributes"`
+	RequestedPredicates map[string]RequestedPredicate `json:"requested_predicates"`
+	NonRevoked          *NonRevokedInterval           `json:"non_revoked,omitempty"`
 }
 
 type RequestedAttribute struct {
-	Name         string                `json:"name,omitempty"`
-	Names        []string              `json:"names,omitempty"`
+	Name         string                 `json:"name,omitempty"`
+	Names        []string               `json:"names,omitempty"`
 	Restrictions []AttributeRestriction `json:"restrictions,omitempty"`
-	NonRevoked   *NonRevokedInterval   `json:"non_revoked,omitempty"`
+	NonRevoked   *NonRevokedInterval    `json:"non_revoked,omitempty"`
 }
 
 type RequestedPredicate struct {
@@ -48,11 +48,11 @@ type RequestedPredicate struct {
 }
 
 type AttributeRestriction struct {
-	SchemaId     string            `json:"schema_id,omitempty"`
-	SchemaName   string            `json:"schema_name,omitempty"`
-	SchemaVersion string           `json:"schema_version,omitempty"`
-	CredDefId    string            `json:"cred_def_id,omitempty"`
-	IssuerDid    string            `json:"issuer_did,omitempty"`
+	SchemaId        string            `json:"schema_id,omitempty"`
+	SchemaName      string            `json:"schema_name,omitempty"`
+	SchemaVersion   string            `json:"schema_version,omitempty"`
+	CredDefId       string            `json:"cred_def_id,omitempty"`
+	IssuerDid       string            `json:"issuer_did,omitempty"`
 	AttributeValues map[string]string `json:"attr::*::value,omitempty"`
 }
 
@@ -94,7 +94,7 @@ func (s *AnonCredsProofFormatService) CreateProposal(
 		AttachmentId: "proposal-0",
 		Format:       ProofRequestFormat,
 	}
-	
+
 	attachment := messages.AttachmentDecorator{
 		Id:       "proposal-0",
 		MimeType: "application/json",
@@ -102,7 +102,7 @@ func (s *AnonCredsProofFormatService) CreateProposal(
 			Json: map[string]interface{}{},
 		},
 	}
-	
+
 	return spec, attachment, nil
 }
 
@@ -136,10 +136,10 @@ func (s *AnonCredsProofFormatService) CreateRequest(
 	// Extract AnonCreds proof request from options
 	requestData, ok := options.ProofFormats["anoncreds"]
 	if !ok {
-		return formats.ProofFormatSpec{}, messages.AttachmentDecorator{}, 
+		return formats.ProofFormatSpec{}, messages.AttachmentDecorator{},
 			fmt.Errorf("no anoncreds format data provided")
 	}
-	
+
 	// Convert to AnonCredsProofRequest
 	var proofRequest AnonCredsProofRequest
 	requestBytes, err := json.Marshal(requestData)
@@ -149,24 +149,24 @@ func (s *AnonCredsProofFormatService) CreateRequest(
 	if err := json.Unmarshal(requestBytes, &proofRequest); err != nil {
 		return formats.ProofFormatSpec{}, messages.AttachmentDecorator{}, err
 	}
-	
+
 	// Generate nonce if not provided
 	if proofRequest.Nonce == "" {
 		// Generate a random nonce
 		proofRequest.Nonce = fmt.Sprintf("%d", time.Now().UnixNano())
 	}
-	
+
 	// Create attachment
 	spec := formats.ProofFormatSpec{
 		AttachmentId: "request-0",
 		Format:       ProofRequestFormat,
 	}
-	
+
 	proofRequestJson, err := json.Marshal(proofRequest)
 	if err != nil {
 		return formats.ProofFormatSpec{}, messages.AttachmentDecorator{}, err
 	}
-	
+
 	attachment := messages.AttachmentDecorator{
 		Id:       "request-0",
 		MimeType: "application/json",
@@ -174,12 +174,12 @@ func (s *AnonCredsProofFormatService) CreateRequest(
 			Base64: base64.StdEncoding.EncodeToString(proofRequestJson),
 		},
 	}
-	
+
 	// Store proof request in record
 	options.ProofRecord.ProofRequest = map[string]interface{}{
 		"anoncreds": proofRequest,
 	}
-	
+
 	return spec, attachment, nil
 }
 
@@ -190,7 +190,7 @@ func (s *AnonCredsProofFormatService) ProcessRequest(
 ) error {
 	// Extract and validate the proof request
 	var proofRequest AnonCredsProofRequest
-	
+
 	if options.RequestAttachment.Data.Base64 != "" {
 		decoded, err := base64.StdEncoding.DecodeString(options.RequestAttachment.Data.Base64)
 		if err != nil {
@@ -208,12 +208,12 @@ func (s *AnonCredsProofFormatService) ProcessRequest(
 			return err
 		}
 	}
-	
+
 	// Store proof request in record
 	options.ProofRecord.ProofRequest = map[string]interface{}{
 		"anoncreds": proofRequest,
 	}
-	
+
 	return nil
 }
 
@@ -225,10 +225,10 @@ func (s *AnonCredsProofFormatService) AcceptRequest(
 	// Get proof request from record
 	proofRequestData, ok := options.ProofRecord.ProofRequest["anoncreds"]
 	if !ok {
-		return formats.ProofFormatSpec{}, messages.AttachmentDecorator{}, 
+		return formats.ProofFormatSpec{}, messages.AttachmentDecorator{},
 			fmt.Errorf("no anoncreds proof request found")
 	}
-	
+
 	// Convert to AnonCredsProofRequest
 	var proofRequest AnonCredsProofRequest
 	requestBytes, err := json.Marshal(proofRequestData)
@@ -238,34 +238,34 @@ func (s *AnonCredsProofFormatService) AcceptRequest(
 	if err := json.Unmarshal(requestBytes, &proofRequest); err != nil {
 		return formats.ProofFormatSpec{}, messages.AttachmentDecorator{}, err
 	}
-	
+
 	// Get credentials for the proof request
 	// This needs to be implemented with the actual AnonCreds API
 	credentials := map[string]interface{}{}
-	
+
 	// Select credentials (auto-select first matching or use provided selection)
 	selectedCreds := options.SelectedCredentials
 	if selectedCreds == nil {
 		// Auto-select credentials
 		selectedCreds = s.autoSelectCredentials(&proofRequest, credentials)
 	}
-	
+
 	// Create proof (placeholder structure matching TS layout)
 	proof := map[string]interface{}{
 		"requested_proof": selectedCreds,
 	}
-	
+
 	// Create attachment
 	spec := formats.ProofFormatSpec{
 		AttachmentId: "presentation-0",
 		Format:       ProofFormat,
 	}
-	
+
 	proofJson, err := json.Marshal(proof)
 	if err != nil {
 		return formats.ProofFormatSpec{}, messages.AttachmentDecorator{}, err
 	}
-	
+
 	attachment := messages.AttachmentDecorator{
 		Id:       "presentation-0",
 		MimeType: "application/json",
@@ -273,12 +273,12 @@ func (s *AnonCredsProofFormatService) AcceptRequest(
 			Base64: base64.StdEncoding.EncodeToString(proofJson),
 		},
 	}
-	
+
 	// Store presentation in record
 	options.ProofRecord.Presentation = map[string]interface{}{
 		"anoncreds": proof,
 	}
-	
+
 	return spec, attachment, nil
 }
 
@@ -289,7 +289,7 @@ func (s *AnonCredsProofFormatService) ProcessPresentation(
 ) (bool, error) {
 	// Extract proof
 	var proof map[string]interface{}
-	
+
 	if options.PresentationAttachment.Data.Base64 != "" {
 		decoded, err := base64.StdEncoding.DecodeString(options.PresentationAttachment.Data.Base64)
 		if err != nil {
@@ -307,21 +307,21 @@ func (s *AnonCredsProofFormatService) ProcessPresentation(
 			return false, err
 		}
 	}
-	
+
 	// Get proof request from record
 	_, ok := options.ProofRecord.ProofRequest["anoncreds"]
 	if !ok {
 		return false, fmt.Errorf("no anoncreds proof request found")
 	}
-	
+
 	// TODO: Verify proof using anoncreds-go when available
 	isValid := true
-	
+
 	// Store presentation in record
 	options.ProofRecord.Presentation = map[string]interface{}{
 		"anoncreds": proof,
 	}
-	
+
 	return isValid, nil
 }
 
@@ -335,7 +335,7 @@ func (s *AnonCredsProofFormatService) GetCredentialsForRequest(
 	if !ok {
 		return nil, fmt.Errorf("no anoncreds proof request found")
 	}
-	
+
 	// Convert to AnonCredsProofRequest
 	var proofRequest AnonCredsProofRequest
 	requestBytes, err := json.Marshal(proofRequestData)
@@ -345,7 +345,7 @@ func (s *AnonCredsProofFormatService) GetCredentialsForRequest(
 	if err := json.Unmarshal(requestBytes, &proofRequest); err != nil {
 		return nil, err
 	}
-	
+
 	// Use holder service to fetch matching credentials per requested attribute/predicate
 	var holder acsvc.AnonCredsHolderService
 	if ctx != nil && ctx.DependencyManager != nil {
@@ -371,7 +371,7 @@ func (s *AnonCredsProofFormatService) GetCredentialsForRequest(
 		_ = json.Unmarshal(b, &requestMap)
 	}
 
-	matches, err := holder.GetCredentialsForProofRequest(ctx, &acsvc.GetCredentialsForProofRequestOptions{ ProofRequest: requestMap })
+	matches, err := holder.GetCredentialsForProofRequest(ctx, &acsvc.GetCredentialsForProofRequestOptions{ProofRequest: requestMap})
 	if err != nil || matches == nil {
 		return []formats.ProofCredential{}, nil
 	}
@@ -386,7 +386,7 @@ func (s *AnonCredsProofFormatService) GetCredentialsForRequest(
 				info["credentialDefinitionId"] = m.CredentialInfo.CredentialDefinitionId
 				info["attributes"] = m.CredentialInfo.Attributes
 			}
-			result = append(result, formats.ProofCredential{ CredentialId: m.CredentialId, CredentialInfo: info, Attributes: m.CredentialInfo.Attributes })
+			result = append(result, formats.ProofCredential{CredentialId: m.CredentialId, CredentialInfo: info, Attributes: m.CredentialInfo.Attributes})
 		}
 	}
 	// Flatten predicates
@@ -398,7 +398,7 @@ func (s *AnonCredsProofFormatService) GetCredentialsForRequest(
 				info["credentialDefinitionId"] = m.CredentialInfo.CredentialDefinitionId
 				info["attributes"] = m.CredentialInfo.Attributes
 			}
-			result = append(result, formats.ProofCredential{ CredentialId: m.CredentialId, CredentialInfo: info, Attributes: m.CredentialInfo.Attributes })
+			result = append(result, formats.ProofCredential{CredentialId: m.CredentialId, CredentialInfo: info, Attributes: m.CredentialInfo.Attributes})
 		}
 	}
 
@@ -415,7 +415,7 @@ func (s *AnonCredsProofFormatService) SelectCredentialsForRequest(
 	if !ok {
 		return nil, fmt.Errorf("no anoncreds proof request found")
 	}
-	
+
 	// Convert to AnonCredsProofRequest
 	var proofRequest AnonCredsProofRequest
 	requestBytes, err := json.Marshal(proofRequestData)
@@ -425,7 +425,7 @@ func (s *AnonCredsProofFormatService) SelectCredentialsForRequest(
 	if err := json.Unmarshal(requestBytes, &proofRequest); err != nil {
 		return nil, err
 	}
-	
+
 	// Attempt holder-based selection
 	requestMap := map[string]interface{}{}
 	if options.RequestAttachment.Data.Base64 != "" {
@@ -437,7 +437,7 @@ func (s *AnonCredsProofFormatService) SelectCredentialsForRequest(
 			_ = json.Unmarshal(b, &requestMap)
 		}
 	}
-	
+
 	var holder acsvc.AnonCredsHolderService
 	if ctx != nil && ctx.DependencyManager != nil {
 		if dm, ok := ctx.DependencyManager.(di.DependencyManager); ok {
@@ -455,19 +455,19 @@ func (s *AnonCredsProofFormatService) SelectCredentialsForRequest(
 	attrsSel := selected["requested_attributes"].(map[string]interface{})
 	predsSel := selected["requested_predicates"].(map[string]interface{})
 	if holder != nil {
-		if matches, err := holder.GetCredentialsForProofRequest(ctx, &acsvc.GetCredentialsForProofRequestOptions{ ProofRequest: requestMap }); err == nil && matches != nil {
+		if matches, err := holder.GetCredentialsForProofRequest(ctx, &acsvc.GetCredentialsForProofRequestOptions{ProofRequest: requestMap}); err == nil && matches != nil {
 			for attrRef := range proofRequest.RequestedAttributes {
 				if list, ok := matches.Attributes[attrRef]; ok && len(list) > 0 {
-					attrsSel[attrRef] = map[string]interface{}{ "cred_id": list[0].CredentialId, "revealed": true }
+					attrsSel[attrRef] = map[string]interface{}{"cred_id": list[0].CredentialId, "revealed": true}
 				} else {
-					attrsSel[attrRef] = map[string]interface{}{ "cred_id": "auto-selected", "revealed": true }
+					attrsSel[attrRef] = map[string]interface{}{"cred_id": "auto-selected", "revealed": true}
 				}
 			}
 			for predRef := range proofRequest.RequestedPredicates {
 				if list, ok := matches.Predicates[predRef]; ok && len(list) > 0 {
-					predsSel[predRef] = map[string]interface{}{ "cred_id": list[0].CredentialId }
+					predsSel[predRef] = map[string]interface{}{"cred_id": list[0].CredentialId}
 				} else {
-					predsSel[predRef] = map[string]interface{}{ "cred_id": "auto-selected" }
+					predsSel[predRef] = map[string]interface{}{"cred_id": "auto-selected"}
 				}
 			}
 			return selected, nil
@@ -494,7 +494,7 @@ func (s *AnonCredsProofFormatService) ShouldAutoRespondToProposal(
 		"",
 		models.AutoAcceptNever,
 	)
-	
+
 	return autoAccept == models.AutoAcceptAlways
 }
 
@@ -509,11 +509,11 @@ func (s *AnonCredsProofFormatService) ShouldAutoRespondToRequest(
 		"",
 		models.AutoAcceptNever,
 	)
-	
+
 	if autoAccept == models.AutoAcceptAlways {
 		return true
 	}
-	
+
 	if autoAccept == models.AutoAcceptContentApproved {
 		// Parse proof request
 		var proofRequest AnonCredsProofRequest
@@ -533,11 +533,15 @@ func (s *AnonCredsProofFormatService) ShouldAutoRespondToRequest(
 		if ctx != nil && ctx.DependencyManager != nil {
 			if dm, ok := ctx.DependencyManager.(di.DependencyManager); ok {
 				if dep, err := dm.Resolve(di.TokenAnonCredsHolderService); err == nil {
-					if h, ok := dep.(acsvc.AnonCredsHolderService); ok { holder = h }
+					if h, ok := dep.(acsvc.AnonCredsHolderService); ok {
+						holder = h
+					}
 				}
 			}
 		}
-		if holder == nil { return false }
+		if holder == nil {
+			return false
+		}
 		// Build generic map request and query matches
 		requestMap := map[string]interface{}{}
 		if requestAttachment.Data != nil {
@@ -546,20 +550,28 @@ func (s *AnonCredsProofFormatService) ShouldAutoRespondToRequest(
 					_ = json.Unmarshal(decoded, &requestMap)
 				}
 			} else if requestAttachment.Data.Json != nil {
-				if b, err := json.Marshal(requestAttachment.Data.Json); err == nil { _ = json.Unmarshal(b, &requestMap) }
+				if b, err := json.Marshal(requestAttachment.Data.Json); err == nil {
+					_ = json.Unmarshal(b, &requestMap)
+				}
 			}
 		}
-		matches, err := holder.GetCredentialsForProofRequest(ctx, &acsvc.GetCredentialsForProofRequestOptions{ ProofRequest: requestMap })
-		if err != nil || matches == nil { return false }
+		matches, err := holder.GetCredentialsForProofRequest(ctx, &acsvc.GetCredentialsForProofRequestOptions{ProofRequest: requestMap})
+		if err != nil || matches == nil {
+			return false
+		}
 		for attrRef := range proofRequest.RequestedAttributes {
-			if list, ok := matches.Attributes[attrRef]; !ok || len(list) == 0 { return false }
+			if list, ok := matches.Attributes[attrRef]; !ok || len(list) == 0 {
+				return false
+			}
 		}
 		for predRef := range proofRequest.RequestedPredicates {
-			if list, ok := matches.Predicates[predRef]; !ok || len(list) == 0 { return false }
+			if list, ok := matches.Predicates[predRef]; !ok || len(list) == 0 {
+				return false
+			}
 		}
 		return true
 	}
-	
+
 	return false
 }
 
@@ -574,7 +586,7 @@ func (s *AnonCredsProofFormatService) ShouldAutoRespondToPresentation(
 		"",
 		models.AutoAcceptNever,
 	)
-	
+
 	return autoAccept == models.AutoAcceptAlways
 }
 

@@ -5,7 +5,7 @@ package kanon
 
 import (
 	"fmt"
-	
+
 	"github.com/Ajna-inc/anoncreds-go/pkg/anoncreds"
 	"github.com/ajna-inc/essi/pkg/kanon/ledger"
 )
@@ -21,18 +21,18 @@ func (api *KanonApi) RegisterSchema(schema *anoncreds.Schema) (string, error) {
 	if schema == nil {
 		return "", fmt.Errorf("schema cannot be nil")
 	}
-	
+
 	// Generate schema ID if not provided
-	schemaId := fmt.Sprintf("schema:kanon:%s:%s:%s", 
-		schema.IssuerId, 
-		schema.Name, 
+	schemaId := fmt.Sprintf("schema:kanon:%s:%s:%s",
+		schema.IssuerId,
+		schema.Name,
 		schema.Version)
-	
+
 	// Register on ledger
 	if err := api.ledger.RegisterSchema(schemaId, schema); err != nil {
 		return "", fmt.Errorf("failed to register schema: %w", err)
 	}
-	
+
 	return schemaId, nil
 }
 
@@ -54,21 +54,21 @@ func (api *KanonApi) RegisterCredentialDefinition(
 	if credDef == nil {
 		return "", fmt.Errorf("credential definition cannot be nil")
 	}
-	
+
 	// Generate credential definition ID
-	credDefId := fmt.Sprintf("creddef:kanon:%s:%s:%s", 
+	credDefId := fmt.Sprintf("creddef:kanon:%s:%s:%s",
 		credDef.IssuerId,
 		credDef.SchemaId,
 		credDef.Tag)
-	
+
 	// Register on ledger
 	if err := api.ledger.RegisterCredentialDefinition(credDefId, credDef); err != nil {
 		return "", fmt.Errorf("failed to register credential definition: %w", err)
 	}
-	
+
 	// Store private data and key proof separately (these are not published)
 	// In a real implementation, these would be stored securely in the wallet
-	
+
 	return credDefId, nil
 }
 
@@ -89,18 +89,18 @@ func (api *KanonApi) RegisterRevocationRegistryDefinition(
 	if revRegDef == nil {
 		return "", fmt.Errorf("revocation registry definition cannot be nil")
 	}
-	
+
 	// Generate revocation registry ID
 	revRegId := fmt.Sprintf("revreg:kanon:%s:%s:%s",
 		revRegDef.IssuerId,
 		revRegDef.CredDefId,
 		revRegDef.Tag)
-	
+
 	// Register on ledger
 	if err := api.ledger.RegisterRevocationRegistryDefinition(revRegId, revRegDef); err != nil {
 		return "", fmt.Errorf("failed to register revocation registry: %w", err)
 	}
-	
+
 	return revRegId, nil
 }
 
@@ -122,7 +122,7 @@ func (api *KanonApi) RegisterRevocationStatusList(
 	if statusList == nil {
 		return fmt.Errorf("revocation status list cannot be nil")
 	}
-	
+
 	return api.ledger.RegisterRevocationStatusList(revRegId, statusList, timestamp)
 }
 
@@ -156,14 +156,14 @@ func (api *KanonApi) GetLedgerStatus() (*LedgerStatus, error) {
 	// Check ledger connectivity
 	isConnected := true
 	ledgerType := "memory"
-	
+
 	if evmLedger, ok := api.ledger.(*ledger.EvmLedger); ok {
 		ledgerType = "evm"
 		// Check EVM connection
 		_ = evmLedger
 		// In real implementation, would check actual connection
 	}
-	
+
 	return &LedgerStatus{
 		Connected:   isConnected,
 		LedgerType:  ledgerType,

@@ -8,13 +8,13 @@ import (
 type CredentialProblemReportReason string
 
 const (
-	IssuanceAbandoned       CredentialProblemReportReason = "issuance-abandoned"
-	InvalidCredentialOffer  CredentialProblemReportReason = "invalid-credential-offer"
+	IssuanceAbandoned        CredentialProblemReportReason = "issuance-abandoned"
+	InvalidCredentialOffer   CredentialProblemReportReason = "invalid-credential-offer"
 	InvalidCredentialRequest CredentialProblemReportReason = "invalid-credential-request"
-	InvalidCredential       CredentialProblemReportReason = "invalid-credential"
-	InvalidAttribute        CredentialProblemReportReason = "invalid-attribute"
-	MissingAttribute        CredentialProblemReportReason = "missing-attribute"
-	ValueMismatch          CredentialProblemReportReason = "value-mismatch"
+	InvalidCredential        CredentialProblemReportReason = "invalid-credential"
+	InvalidAttribute         CredentialProblemReportReason = "invalid-attribute"
+	MissingAttribute         CredentialProblemReportReason = "missing-attribute"
+	ValueMismatch            CredentialProblemReportReason = "value-mismatch"
 )
 
 // ProblemReportError represents a problem that should be reported to the other party

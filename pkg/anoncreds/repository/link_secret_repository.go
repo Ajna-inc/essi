@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
-	
+
 	agentcontext "github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/storage"
 )
@@ -46,13 +46,13 @@ func (r *AskarLinkSecretRepository) Save(ctx *agentcontext.AgentContext, record 
 	if record.BaseRecord.Type == "" {
 		record.BaseRecord.Type = "LinkSecretRecord"
 	}
-	
+
 	// Set tags for querying
 	record.BaseRecord.SetTag("linkSecretId", record.LinkSecretId)
 	if record.IsDefault {
 		record.BaseRecord.SetTag("isDefault", "true")
 	}
-	
+
 	return r.storage.Save(ctx.Context, record)
 }
 
@@ -64,57 +64,57 @@ func (r *AskarLinkSecretRepository) Update(ctx *agentcontext.AgentContext, recor
 	} else {
 		record.BaseRecord.RemoveTag("isDefault")
 	}
-	
+
 	return r.storage.Update(ctx.Context, record)
 }
 
 // GetDefault gets the default link secret (errors if not found)
 func (r *AskarLinkSecretRepository) GetDefault(ctx *agentcontext.AgentContext) (*LinkSecretRecord, error) {
 	query := storage.NewQuery().WithTag("isDefault", "true")
-	
+
 	record, err := r.storage.FindSingleByQuery(ctx.Context, "LinkSecretRecord", *query)
 	if err != nil {
 		return nil, fmt.Errorf("no default link secret found: %w", err)
 	}
-	
+
 	return r.convertToLinkSecretRecord(record)
 }
 
 // FindDefault finds the default link secret (returns nil if not found)
 func (r *AskarLinkSecretRepository) FindDefault(ctx *agentcontext.AgentContext) (*LinkSecretRecord, error) {
 	query := storage.NewQuery().WithTag("isDefault", "true")
-	
+
 	record, err := r.storage.FindSingleByQuery(ctx.Context, "LinkSecretRecord", *query)
 	if err != nil {
 		// Return nil if not found (find methods don't error on not found)
 		return nil, nil
 	}
-	
+
 	return r.convertToLinkSecretRecord(record)
 }
 
 // GetByLinkSecretId gets a link secret by ID (errors if not found)
 func (r *AskarLinkSecretRepository) GetByLinkSecretId(ctx *agentcontext.AgentContext, linkSecretId string) (*LinkSecretRecord, error) {
 	query := storage.NewQuery().WithTag("linkSecretId", linkSecretId)
-	
+
 	record, err := r.storage.FindSingleByQuery(ctx.Context, "LinkSecretRecord", *query)
 	if err != nil {
 		return nil, fmt.Errorf("link secret %s not found: %w", linkSecretId, err)
 	}
-	
+
 	return r.convertToLinkSecretRecord(record)
 }
 
 // FindByLinkSecretId finds a link secret by ID (returns nil if not found)
 func (r *AskarLinkSecretRepository) FindByLinkSecretId(ctx *agentcontext.AgentContext, linkSecretId string) (*LinkSecretRecord, error) {
 	query := storage.NewQuery().WithTag("linkSecretId", linkSecretId)
-	
+
 	record, err := r.storage.FindSingleByQuery(ctx.Context, "LinkSecretRecord", *query)
 	if err != nil {
 		// Return nil if not found (find methods don't error on not found)
 		return nil, nil
 	}
-	
+
 	return r.convertToLinkSecretRecord(record)
 }
 
@@ -124,7 +124,7 @@ func (r *AskarLinkSecretRepository) GetAll(ctx *agentcontext.AgentContext) ([]*L
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var result []*LinkSecretRecord
 	for _, record := range records {
 		lsRecord, err := r.convertToLinkSecretRecord(record)
@@ -133,7 +133,7 @@ func (r *AskarLinkSecretRepository) GetAll(ctx *agentcontext.AgentContext) ([]*L
 		}
 		result = append(result, lsRecord)
 	}
-	
+
 	return result, nil
 }
 
@@ -142,17 +142,17 @@ func (r *AskarLinkSecretRepository) convertToLinkSecretRecord(record storage.Rec
 	if lsRecord, ok := record.(*LinkSecretRecord); ok {
 		return lsRecord, nil
 	}
-	
+
 	// Fallback deserialization
 	data, err := record.ToJSON()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get record data: %w", err)
 	}
-	
+
 	var lsRecord LinkSecretRecord
 	if err := lsRecord.FromJSON(data); err != nil {
 		return nil, fmt.Errorf("failed to deserialize record: %w", err)
 	}
-	
+
 	return &lsRecord, nil
 }

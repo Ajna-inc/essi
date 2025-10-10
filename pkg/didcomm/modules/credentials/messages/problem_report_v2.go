@@ -42,19 +42,19 @@ const (
 	// Protocol problems
 	ProblemCodeProtocolError = "protocol-error"
 	ProblemCodeInternalError = "internal-error"
-	
+
 	// Credential-specific problems
 	ProblemCodeInvalidCredential = "invalid-credential"
 	ProblemCodeInvalidAttribute  = "invalid-attribute"
 	ProblemCodeValueMismatch     = "value-mismatch"
 	ProblemCodeInvalidSchema     = "invalid-schema"
 	ProblemCodeInvalidCredDef    = "invalid-credential-definition"
-	
+
 	// State problems
 	ProblemCodeInvalidState = "invalid-state"
 	ProblemCodeRejected     = "rejected"
 	ProblemCodeAbandoned    = "abandoned"
-	
+
 	// Request problems
 	ProblemCodeRequestNotAccepted = "request-not-accepted"
 	ProblemCodeOfferNotAccepted   = "offer-not-accepted"
@@ -78,18 +78,18 @@ func NewCredentialProblemReportV2(code string, comment string) *CredentialProble
 func (m *CredentialProblemReportV2) ToJSON() ([]byte, error) {
 	// Create a map to combine BaseMessage fields with problem report fields
 	result := make(map[string]interface{})
-	
+
 	// First get BaseMessage fields
 	baseJSON, err := m.BaseMessage.ToJSON()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Unmarshal BaseMessage to map
 	if err := json.Unmarshal(baseJSON, &result); err != nil {
 		return nil, err
 	}
-	
+
 	// Add problem report specific fields
 	result["code"] = m.Code
 	if m.Comment != "" {
@@ -122,7 +122,7 @@ func (m *CredentialProblemReportV2) ToJSON() ([]byte, error) {
 	if m.EscalationURI != "" {
 		result["escalation_uri"] = m.EscalationURI
 	}
-	
+
 	// Marshal the complete map
 	return json.Marshal(result)
 }
@@ -144,11 +144,11 @@ func (m *CredentialProblemReportV2) FromJSON(b []byte) error {
 		TrackingURI   string                   `json:"tracking_uri,omitempty"`
 		EscalationURI string                   `json:"escalation_uri,omitempty"`
 	}
-	
+
 	if err := json.Unmarshal(b, &temp); err != nil {
 		return err
 	}
-	
+
 	// Parse BaseMessage
 	if m.BaseMessage == nil {
 		m.BaseMessage = &messages.BaseMessage{}
@@ -156,7 +156,7 @@ func (m *CredentialProblemReportV2) FromJSON(b []byte) error {
 	if err := m.BaseMessage.FromJSON(b); err != nil {
 		return err
 	}
-	
+
 	// Set fields
 	m.Code = temp.Code
 	m.Comment = temp.Comment
@@ -167,7 +167,7 @@ func (m *CredentialProblemReportV2) FromJSON(b []byte) error {
 	m.Where = temp.Where
 	m.TrackingURI = temp.TrackingURI
 	m.EscalationURI = temp.EscalationURI
-	
+
 	// Parse time fields
 	if temp.ProblemTime != "" {
 		if t, err := time.Parse(time.RFC3339, temp.ProblemTime); err == nil {
@@ -179,6 +179,6 @@ func (m *CredentialProblemReportV2) FromJSON(b []byte) error {
 			m.NoticedTime = &t
 		}
 	}
-	
+
 	return nil
 }

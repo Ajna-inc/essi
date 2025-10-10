@@ -25,16 +25,16 @@ func NewAskarModule(config *AskarModuleConfig) *AskarModule {
 	if config == nil {
 		config = &AskarModuleConfig{}
 	}
-	
+
 	if config.Store == nil {
 		config.Store = &AskarStoreConfig{
 			ID:  "default",
 			Key: "default-key",
 		}
 	}
-	
+
 	config.Store.SetDefaults()
-	
+
 	return &AskarModule{
 		config:       config,
 		storeManager: NewAskarStoreManager(),
@@ -54,8 +54,12 @@ func (m *AskarModule) Register(dm di.DependencyManager) error {
 			m.initialized = true
 		}
 	}
-	if m.kms != nil { dm.RegisterInstance(di.TokenKeyManagementService, m.kms) }
-	if m.storage != nil { dm.RegisterInstance(di.TokenStorageService, m.storage) }
+	if m.kms != nil {
+		dm.RegisterInstance(di.TokenKeyManagementService, m.kms)
+	}
+	if m.storage != nil {
+		dm.RegisterInstance(di.TokenStorageService, m.storage)
+	}
 	dm.RegisterInstance(di.Token{Name: "AskarStoreManager"}, m.storeManager)
 	return nil
 }
@@ -75,30 +79,30 @@ func (m *AskarModule) Initialize(ctx *context.AgentContext) error {
 	if m.initialized {
 		return nil
 	}
-	
+
 	// Validate configuration
 	if err := m.config.Store.Validate(); err != nil {
 		return fmt.Errorf("invalid Askar configuration: %w", err)
 	}
-	
+
 	// Provision or open the store
 	if err := m.provisionStore(); err != nil {
 		return fmt.Errorf("failed to provision Askar store: %w", err)
 	}
-	
+
 	m.kms = kms.NewAskarKeyManagementService(m.storeManager, m.config.Store.ID)
-	
+
 	m.storage = storage.NewAskarStorageService(m.storeManager, m.config.Store.ID)
-	
+
 	m.initialized = true
-	
+
 	// Register into typed DI if available
 	if m.dm != nil {
 		m.dm.RegisterInstance(di.TokenKeyManagementService, m.kms)
 		m.dm.RegisterInstance(di.TokenStorageService, m.storage)
 		m.dm.RegisterInstance(di.Token{Name: "AskarStoreManager"}, m.storeManager)
 	}
-	
+
 	return nil
 }
 
@@ -111,20 +115,19 @@ func (m *AskarModule) provisionStore() error {
 		if err := m.storeManager.ProvisionStore(m.config.Store); err != nil {
 			return err
 		}
-		
+
 		// Get the provisioned store
 		store, err = m.storeManager.GetStore(m.config.Store.ID)
 		if err != nil {
 			return err
 		}
 	}
-	
+
 	// Store is now open and ready
 	_ = store
-	
+
 	return nil
 }
-
 
 // GetStoreManager returns the store manager
 func (m *AskarModule) GetStoreManager() *AskarStoreManager {
@@ -146,11 +149,11 @@ func (m *AskarModule) Shutdown() error {
 	if !m.initialized {
 		return nil
 	}
-	
+
 	if err := m.storeManager.CloseAll(); err != nil {
 		return fmt.Errorf("failed to close stores: %w", err)
 	}
-	
+
 	m.initialized = false
 	return nil
 }
@@ -170,7 +173,7 @@ func (m *AskarModule) CreateProfile(profileName string) error {
 	if !m.initialized {
 		return fmt.Errorf("module not initialized")
 	}
-	
+
 	return m.storeManager.CreateProfile(m.config.Store.ID, profileName)
 }
 
@@ -179,7 +182,7 @@ func (m *AskarModule) RemoveProfile(profileName string) error {
 	if !m.initialized {
 		return fmt.Errorf("module not initialized")
 	}
-	
+
 	return m.storeManager.RemoveProfile(m.config.Store.ID, profileName)
 }
 
@@ -188,7 +191,7 @@ func (m *AskarModule) ListProfiles() ([]string, error) {
 	if !m.initialized {
 		return nil, fmt.Errorf("module not initialized")
 	}
-	
+
 	return m.storeManager.ListProfiles(m.config.Store.ID)
 }
 
@@ -197,7 +200,7 @@ func (m *AskarModule) RotateStoreKey(newKey string, newKeyMethod askar.StoreKeyM
 	if !m.initialized {
 		return fmt.Errorf("module not initialized")
 	}
-	
+
 	return m.storeManager.RotateStoreKey(m.config.Store.ID, newKey, newKeyMethod)
 }
 
@@ -206,24 +209,24 @@ func (m *AskarModule) ExportStore(targetConfig *AskarStoreConfig) error {
 	if !m.initialized {
 		return fmt.Errorf("module not initialized")
 	}
-	
+
 	// Get current store
 	store, err := m.storeManager.GetStore(m.config.Store.ID)
 	if err != nil {
 		return err
 	}
-	
+
 	// Copy to new location
 	targetURI, err := targetConfig.Database.GetConnectionString(targetConfig.ID)
 	if err != nil {
 		return err
 	}
-	
+
 	newStore, err := store.Copy(targetURI, targetConfig.KeyDerivationMethod, targetConfig.Key, false)
 	if err != nil {
 		return fmt.Errorf("failed to export store: %w", err)
 	}
-	
+
 	return newStore.Close()
 }
 
@@ -231,23 +234,23 @@ func (m *AskarModule) ExportStore(targetConfig *AskarStoreConfig) error {
 func (m *AskarModule) ImportStore(sourceConfig *AskarStoreConfig) error {
 	// This would replace the current store with the imported one
 	// Implementation depends on specific requirements
-	
+
 	if err := m.storeManager.CloseStore(m.config.Store.ID); err != nil {
 		return err
 	}
-	
+
 	// Open the source store
 	sourceStore, err := m.storeManager.OpenStore(sourceConfig)
 	if err != nil {
 		return err
 	}
-	
+
 	// Copy to current location
 	targetURI, err := m.config.Store.Database.GetConnectionString(m.config.Store.ID)
 	if err != nil {
 		return err
 	}
-	
+
 	newStore, err := sourceStore.Copy(
 		targetURI,
 		m.config.Store.KeyDerivationMethod,
@@ -257,16 +260,16 @@ func (m *AskarModule) ImportStore(sourceConfig *AskarStoreConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to import store: %w", err)
 	}
-	
+
 	// Close source store
 	m.storeManager.CloseStore(sourceConfig.ID)
-	
+
 	// Register the new store
 	m.storeManager.stores[m.config.Store.ID] = &ManagedStore{
 		Store:  newStore,
 		Config: m.config.Store,
 	}
-	
+
 	return nil
 }
 
@@ -276,17 +279,17 @@ func (m *AskarModule) GetStoreStatus() map[string]interface{} {
 		"initialized": m.initialized,
 		"storeId":     m.config.Store.ID,
 	}
-	
+
 	if m.initialized {
 		status["storeOpen"] = m.storeManager.IsStoreOpen(m.config.Store.ID)
-		
+
 		// Try to get profiles
 		if profiles, err := m.ListProfiles(); err == nil {
 			status["profiles"] = profiles
 			status["profileCount"] = len(profiles)
 		}
 	}
-	
+
 	return status
 }
 

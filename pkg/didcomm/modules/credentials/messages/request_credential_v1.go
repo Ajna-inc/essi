@@ -26,22 +26,22 @@ func NewRequestCredentialV1() *RequestCredentialV1 {
 func (m *RequestCredentialV1) ToJSON() ([]byte, error) {
 	// Create a map to combine BaseMessage fields with request-specific fields
 	result := make(map[string]interface{})
-	
+
 	// Add base message fields
 	result["@type"] = m.GetType()
 	result["@id"] = m.GetId()
-	
+
 	// Add thread decoration if present
 	if m.GetThread() != nil {
 		result["~thread"] = m.GetThread()
 	}
-	
+
 	// Add request-specific fields
 	result["requests~attach"] = m.RequestsAttach
 	if m.Comment != "" {
 		result["comment"] = m.Comment
 	}
-	
+
 	// Marshal the complete map
 	return json.Marshal(result)
 }

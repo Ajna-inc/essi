@@ -41,14 +41,20 @@ func NewDidRegistrarService() *DidRegistrarService {
 
 // RegisterRegistrar registers a registrar by its method
 func (s *DidRegistrarService) RegisterRegistrar(reg DidRegistrar) {
-	if reg == nil { return }
-	if s.registrars == nil { s.registrars = map[string]DidRegistrar{} }
+	if reg == nil {
+		return
+	}
+	if s.registrars == nil {
+		s.registrars = map[string]DidRegistrar{}
+	}
 	s.registrars[reg.Method()] = reg
 }
 
 // GetRegistrar fetches a registrar for a method
 func (s *DidRegistrarService) GetRegistrar(method string) (DidRegistrar, bool) {
-	if s.registrars == nil { return nil, false }
+	if s.registrars == nil {
+		return nil, false
+	}
 	reg, ok := s.registrars[method]
 	return reg, ok
 }
@@ -64,5 +70,3 @@ func (s *DidRegistrarService) Create(ctx *context.AgentContext, opts *DidCreateO
 	}
 	return reg.Create(ctx, opts)
 }
-
-

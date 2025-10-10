@@ -10,10 +10,10 @@ import (
 // TrustPingMessage represents a trust ping message
 type TrustPingMessage struct {
 	*messages.BaseMessage
-	
+
 	// Comment - optional human-readable message
 	Comment string `json:"comment,omitempty"`
-	
+
 	// ResponseRequested - whether a response is requested
 	ResponseRequested bool `json:"response_requested,omitempty"`
 }
@@ -21,7 +21,7 @@ type TrustPingMessage struct {
 // TrustPingResponseMessage represents a trust ping response
 type TrustPingResponseMessage struct {
 	*messages.BaseMessage
-	
+
 	// Comment - optional human-readable message
 	Comment string `json:"comment,omitempty"`
 }
@@ -30,7 +30,7 @@ type TrustPingResponseMessage struct {
 const (
 	TrustPingType         = "https://didcomm.org/trust_ping/1.0/ping"
 	TrustPingResponseType = "https://didcomm.org/trust_ping/1.0/ping_response"
-	
+
 	// Legacy types
 	TrustPingTypeV1_0         = "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/trust_ping/1.0/ping"
 	TrustPingResponseTypeV1_0 = "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/trust_ping/1.0/ping_response"
@@ -39,7 +39,7 @@ const (
 // NewTrustPingMessage creates a new trust ping message
 func NewTrustPingMessage(comment string, responseRequested bool) *TrustPingMessage {
 	baseMessage := messages.NewBaseMessage(TrustPingType)
-	
+
 	return &TrustPingMessage{
 		BaseMessage:       baseMessage,
 		Comment:           comment,
@@ -50,7 +50,7 @@ func NewTrustPingMessage(comment string, responseRequested bool) *TrustPingMessa
 // NewTrustPingMessageWithId creates a new trust ping with specific ID
 func NewTrustPingMessageWithId(id string, comment string, responseRequested bool) *TrustPingMessage {
 	baseMessage := messages.NewBaseMessageWithId(id, TrustPingType)
-	
+
 	return &TrustPingMessage{
 		BaseMessage:       baseMessage,
 		Comment:           comment,
@@ -61,7 +61,7 @@ func NewTrustPingMessageWithId(id string, comment string, responseRequested bool
 // NewTrustPingResponseMessage creates a new trust ping response
 func NewTrustPingResponseMessage(comment string) *TrustPingResponseMessage {
 	baseMessage := messages.NewBaseMessage(TrustPingResponseType)
-	
+
 	return &TrustPingResponseMessage{
 		BaseMessage: baseMessage,
 		Comment:     comment,
@@ -71,14 +71,14 @@ func NewTrustPingResponseMessage(comment string) *TrustPingResponseMessage {
 // NewTrustPingResponseFromPing creates a response from a ping message
 func NewTrustPingResponseFromPing(ping *TrustPingMessage) *TrustPingResponseMessage {
 	response := NewTrustPingResponseMessage("pong")
-	
+
 	// Set threading to reference the ping
 	if ping.GetThreadId() != "" {
 		response.SetThreadId(ping.GetThreadId())
 	} else {
 		response.SetThreadId(ping.GetId())
 	}
-	
+
 	return response
 }
 
@@ -126,7 +126,7 @@ func (m *TrustPingMessage) Clone() messages.MessageInterface {
 		Comment:           m.Comment,
 		ResponseRequested: m.ResponseRequested,
 	}
-	
+
 	return clone
 }
 
@@ -147,12 +147,12 @@ func (m *TrustPingResponseMessage) Validate() error {
 	if err := m.BaseMessage.Validate(); err != nil {
 		return err
 	}
-	
+
 	// Response should have a thread ID
 	if m.GetThreadId() == "" {
 		return fmt.Errorf("trust ping response must reference a thread")
 	}
-	
+
 	return nil
 }
 
@@ -172,6 +172,6 @@ func (m *TrustPingResponseMessage) Clone() messages.MessageInterface {
 		BaseMessage: m.BaseMessage.Clone().(*messages.BaseMessage),
 		Comment:     m.Comment,
 	}
-	
+
 	return clone
 }

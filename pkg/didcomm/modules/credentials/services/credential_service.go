@@ -2,20 +2,20 @@ package services
 
 import (
 	"encoding/json"
-	"log"
 	"fmt"
+	regsvc "github.com/ajna-inc/essi/pkg/anoncreds/registry"
+	"github.com/ajna-inc/essi/pkg/core/common"
 	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/di"
 	coreevents "github.com/ajna-inc/essi/pkg/core/events"
-	"github.com/ajna-inc/essi/pkg/core/common"
-	regsvc "github.com/ajna-inc/essi/pkg/anoncreds/registry"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"
 	crederrors "github.com/ajna-inc/essi/pkg/didcomm/modules/credentials/errors"
 	anonfmt "github.com/ajna-inc/essi/pkg/didcomm/modules/credentials/formats/anoncreds"
 	credmsgs "github.com/ajna-inc/essi/pkg/didcomm/modules/credentials/messages"
+	protocols "github.com/ajna-inc/essi/pkg/didcomm/modules/credentials/protocols"
 	credrecs "github.com/ajna-inc/essi/pkg/didcomm/modules/credentials/records"
 	credutils "github.com/ajna-inc/essi/pkg/didcomm/modules/credentials/utils"
-	protocols "github.com/ajna-inc/essi/pkg/didcomm/modules/credentials/protocols"
+	"log"
 )
 
 type CredentialService struct {
@@ -37,12 +37,19 @@ func NewCredentialService(ctx *context.AgentContext, typed di.DependencyManager,
 	cs := &CredentialService{context: ctx, typedDI: typed, repo: repo}
 	if typed != nil {
 		if any, err := typed.Resolve(di.TokenAnonCredsCoreIssuer); err == nil {
-			if i, ok := any.(interface{ CreateCredentialOffer(string) (map[string]interface{}, error); CreateCredential(map[string]interface{}, map[string]interface{}, map[string]map[string]string) (map[string]interface{}, string, error) }); ok {
+			if i, ok := any.(interface {
+				CreateCredentialOffer(string) (map[string]interface{}, error)
+				CreateCredential(map[string]interface{}, map[string]interface{}, map[string]map[string]string) (map[string]interface{}, string, error)
+			}); ok {
 				cs.issuer = i
 			}
 		}
 		if any, err := typed.Resolve(di.TokenAnonCredsHolderService); err == nil {
-			if h, ok := any.(interface{ EnsureLinkSecret() (string, error); CreateCredentialRequest(map[string]interface{}) (map[string]interface{}, map[string]interface{}, error); ProcessIssuedCredential(map[string]interface{}, map[string]interface{}) error }); ok {
+			if h, ok := any.(interface {
+				EnsureLinkSecret() (string, error)
+				CreateCredentialRequest(map[string]interface{}) (map[string]interface{}, map[string]interface{}, error)
+				ProcessIssuedCredential(map[string]interface{}, map[string]interface{}) error
+			}); ok {
 				cs.holder = h
 			}
 		}
@@ -79,14 +86,14 @@ func (cs *CredentialService) emit(event string, data interface{}) {
 
 // GetContext returns the agent context
 func (cs *CredentialService) GetContext() *context.AgentContext { return cs.context }
+
 // FindRecordByThreadId retrieves a credential record by thread id
 func (cs *CredentialService) FindRecordByThreadId(threadId string) (*credrecs.CredentialRecord, error) {
-    if cs.repo == nil {
-        return nil, fmt.Errorf("credential repository not available")
-    }
-    return cs.repo.FindByThreadId(cs.context, threadId)
+	if cs.repo == nil {
+		return nil, fmt.Errorf("credential repository not available")
+	}
+	return cs.repo.FindByThreadId(cs.context, threadId)
 }
-
 
 // GetHolder returns the anoncreds holder adapter if set
 func (cs *CredentialService) GetHolder() interface {
@@ -132,8 +139,15 @@ func (cs *CredentialService) ProcessOffer(thid string, connectionId string, offe
 	rec.ThreadId = thid
 	rec.Role = "holder"
 	rec.State = credrecs.StateOfferReceived
-	if offer != nil && len(offer.Formats) > 0 { rec.Formats = make([]string, 0, len(offer.Formats)); for _, f := range offer.Formats { rec.Formats = append(rec.Formats, f.Format) } }
-	if err := cs.repo.Save(cs.context, rec); err != nil { return nil, nil, err }
+	if offer != nil && len(offer.Formats) > 0 {
+		rec.Formats = make([]string, 0, len(offer.Formats))
+		for _, f := range offer.Formats {
+			rec.Formats = append(rec.Formats, f.Format)
+		}
+	}
+	if err := cs.repo.Save(cs.context, rec); err != nil {
+		return nil, nil, err
+	}
 	cs.emit("credentials.offerReceived", map[string]string{"recordId": rec.ID, "connectionId": connectionId})
 
 	var req *credmsgs.RequestCredentialV2
@@ -144,17 +158,32 @@ func (cs *CredentialService) ProcessOffer(thid string, connectionId string, offe
 		if any, err := cs.typedDI.Resolve(di.TokenCredentialProtocols); err == nil {
 			switch v := any.(type) {
 			case []protocols.CredentialProtocol:
-				for _, p := range v { if p == nil { continue }
-					if req2, handled, err := p.TryBuildRequestFromOffer(cs.typedDI, thid, connectionId, offer, rec); err == nil && handled { req = req2; built = true; break }
+				for _, p := range v {
+					if p == nil {
+						continue
+					}
+					if req2, handled, err := p.TryBuildRequestFromOffer(cs.typedDI, thid, connectionId, offer, rec); err == nil && handled {
+						req = req2
+						built = true
+						break
+					}
 				}
 			case []interface{}:
-				for _, it := range v { if p, ok := it.(protocols.CredentialProtocol); ok && p != nil {
-					if req2, handled, err := p.TryBuildRequestFromOffer(cs.typedDI, thid, connectionId, offer, rec); err == nil && handled { req = req2; built = true; break }
-				} }
+				for _, it := range v {
+					if p, ok := it.(protocols.CredentialProtocol); ok && p != nil {
+						if req2, handled, err := p.TryBuildRequestFromOffer(cs.typedDI, thid, connectionId, offer, rec); err == nil && handled {
+							req = req2
+							built = true
+							break
+						}
+					}
+				}
 			}
 		}
 	}
-	if built { return req, rec, nil }
+	if built {
+		return req, rec, nil
+	}
 
 	return nil, rec, crederrors.NewProblemReportError("no credential protocol handled offer", crederrors.InvalidCredentialOffer)
 }
@@ -174,7 +203,7 @@ func (cs *CredentialService) ProcessIssue(thid string, connectionId string, cred
 		rec.State = credrecs.StateCredentialReceived
 		_ = cs.repo.Update(cs.context, rec)
 	}
-	
+
 	// If anoncreds payload exists and holder is available, process credential
 	if cs.holder != nil {
 		var credPayload map[string]interface{}
@@ -187,7 +216,7 @@ func (cs *CredentialService) ProcessIssue(thid string, connectionId string, cred
 				break
 			}
 		}
-		
+
 		if credPayload != nil {
 			// CRITICAL VALIDATION: Verify credential values match what we expected
 			if rec.PreviewAttributes != nil {
@@ -195,7 +224,7 @@ func (cs *CredentialService) ProcessIssue(thid string, connectionId string, cred
 				credValues, ok := credPayload["values"].(map[string]interface{})
 				if ok {
 					expectedValues := credutils.ConvertAttributesToCredentialValues(rec.PreviewAttributes)
-					
+
 					// Assert values match (this is critical for security)
 					if err := credutils.AssertCredentialValuesMatch(credValues, expectedValues); err != nil {
 						log.Printf("❌ Credential value validation failed: %v", err)
@@ -207,12 +236,12 @@ func (cs *CredentialService) ProcessIssue(thid string, connectionId string, cred
 					log.Printf("✅ Credential values validated successfully")
 				}
 			}
-			
+
 			var reqMeta map[string]interface{}
 			if rec.RequestMetadata != nil {
 				reqMeta = rec.RequestMetadata
 			}
-			
+
 			if err := cs.holder.ProcessIssuedCredential(credPayload, reqMeta); err != nil {
 				log.Printf("Failed to process issued credential: %v", err)
 				return nil, err
@@ -230,13 +259,13 @@ func (cs *CredentialService) ProcessIssue(thid string, connectionId string, cred
 			_ = cs.repo.Update(cs.context, rec)
 		}
 	}
-	
+
 	rec.State = credrecs.StateDone
 	_ = cs.repo.Update(cs.context, rec)
-	
+
 	cs.emit("credentials.issuedReceived", map[string]string{"recordId": rec.ID, "connectionId": connectionId})
 	cs.emit("credentials.stateChanged", map[string]string{"recordId": rec.ID, "state": string(credrecs.StateDone), "connectionId": connectionId})
-	
+
 	ack := credmsgs.NewAck()
 	ack.SetThreadId(thid)
 	return ack, nil
@@ -256,7 +285,7 @@ func (cs *CredentialService) CreateOffer(thid string, connectionId string, crede
 	// Build anoncreds offer via issuer if present
 	offer := credmsgs.NewOfferCredentialV2()
 	offer.SetThreadId(thid)
-	
+
 	if previewAttributes != nil && len(previewAttributes) > 0 {
 		preview := &credmsgs.CredentialPreview{
 			Type:       "https://didcomm.org/issue-credential/2.0/credential-preview",
@@ -276,7 +305,7 @@ func (cs *CredentialService) CreateOffer(thid string, connectionId string, crede
 	} else {
 		log.Printf("⚠️ No preview attributes provided")
 	}
-	
+
 	// Persist preview attributes on record for later issuing
 	rec.PreviewAttributes = previewAttributes
 	_ = cs.repo.Update(cs.context, rec)
@@ -313,7 +342,9 @@ func (cs *CredentialService) CreateOffer(thid string, connectionId string, crede
 			if router, ok := any.(*regsvc.Service); ok && router != nil {
 				if cd, sid, err := router.GetCredentialDefinition(credentialDefinitionId); err == nil {
 					resolvedSchemaId = cd.SchemaId
-					if sid != "" { payload["schema_id"] = cd.SchemaId }
+					if sid != "" {
+						payload["schema_id"] = cd.SchemaId
+					}
 					if schema, _, err := router.GetSchema(cd.SchemaId); err == nil {
 						b, _ := json.Marshal(schema)
 						_ = json.Unmarshal(b, &resolvedSchema)
@@ -322,7 +353,7 @@ func (cs *CredentialService) CreateOffer(thid string, connectionId string, crede
 			}
 		}
 	}
-	
+
 	// CRITICAL VALIDATION: Validate preview attributes match schema
 	if resolvedSchema != nil && previewAttributes != nil {
 		if err := credutils.AssertAttributesMatchMap(resolvedSchema, previewAttributes); err != nil {
@@ -352,11 +383,11 @@ func (cs *CredentialService) CreateOffer(thid string, connectionId string, crede
 		log.Printf("anoncreds offer payload: %s", string(b))
 	}
 	anonfmt.AddOfferFormat(offer, "offer-0", payload)
-	
+
 	if offerJSON, err := offer.ToJSON(); err == nil {
 		log.Printf("📤 Complete offer message being sent: %s", string(offerJSON))
 	}
-	
+
 	cs.emit("credentials.offerSent", map[string]string{"recordId": rec.ID, "connectionId": connectionId})
 	return offer, rec, nil
 }
@@ -364,22 +395,41 @@ func (cs *CredentialService) CreateOffer(thid string, connectionId string, crede
 // Issuer flow: process request and issue credential
 func (cs *CredentialService) ProcessRequest(thid string, connectionId string, req *credmsgs.RequestCredentialV2) (*credmsgs.IssueCredentialV2Credential, error) {
 	log.Printf("ProcessRequest called for thread %s, connection %s", thid, connectionId)
-	if allRecs, err := cs.repo.GetAll(cs.context); err == nil { log.Printf("📋 All credential records in repository:"); for _, r := range allRecs { log.Printf("  - ID=%s, ThreadId=%s, State=%s, HasOfferPayload=%v", r.ID, r.ThreadId, r.State, r.OfferPayload != nil) } }
-	rec, err := cs.repo.FindByThreadId(cs.context, thid); if err != nil { log.Printf("Failed to find record for thread %s: %v", thid, err); return nil, err }
-	rec.State = credrecs.StateRequestReceived; _ = cs.repo.Update(cs.context, rec)
+	if allRecs, err := cs.repo.GetAll(cs.context); err == nil {
+		log.Printf("📋 All credential records in repository:")
+		for _, r := range allRecs {
+			log.Printf("  - ID=%s, ThreadId=%s, State=%s, HasOfferPayload=%v", r.ID, r.ThreadId, r.State, r.OfferPayload != nil)
+		}
+	}
+	rec, err := cs.repo.FindByThreadId(cs.context, thid)
+	if err != nil {
+		log.Printf("Failed to find record for thread %s: %v", thid, err)
+		return nil, err
+	}
+	rec.State = credrecs.StateRequestReceived
+	_ = cs.repo.Update(cs.context, rec)
 
 	// Try registered protocols via typed DI
 	if cs.typedDI != nil {
 		if any, err := cs.typedDI.Resolve(di.TokenCredentialProtocols); err == nil {
 			switch v := any.(type) {
 			case []protocols.CredentialProtocol:
-				for _, p := range v { if p == nil { continue }
-					if msg, handled, err := p.TryBuildIssueFromRequest(cs.typedDI, thid, connectionId, req, rec); err == nil && handled { return msg, nil }
+				for _, p := range v {
+					if p == nil {
+						continue
+					}
+					if msg, handled, err := p.TryBuildIssueFromRequest(cs.typedDI, thid, connectionId, req, rec); err == nil && handled {
+						return msg, nil
+					}
 				}
 			case []interface{}:
-				for _, it := range v { if p, ok := it.(protocols.CredentialProtocol); ok && p != nil {
-					if msg, handled, err := p.TryBuildIssueFromRequest(cs.typedDI, thid, connectionId, req, rec); err == nil && handled { return msg, nil }
-				} }
+				for _, it := range v {
+					if p, ok := it.(protocols.CredentialProtocol); ok && p != nil {
+						if msg, handled, err := p.TryBuildIssueFromRequest(cs.typedDI, thid, connectionId, req, rec); err == nil && handled {
+							return msg, nil
+						}
+					}
+				}
 			}
 		}
 	}
@@ -426,8 +476,8 @@ func (cs *CredentialService) MarkDone(thid string) error {
 		return err
 	}
 	cs.emit("credentials.stateChanged", map[string]string{
-		"recordId": rec.ID, 
-		"state": string(credrecs.StateDone),
+		"recordId":     rec.ID,
+		"state":        string(credrecs.StateDone),
 		"connectionId": rec.ConnectionId,
 	})
 	return nil
@@ -449,7 +499,7 @@ func (cs *CredentialService) CreateProposal(
 	rec.Role = "holder"
 	rec.State = credrecs.StateProposalSent
 	rec.AutoAcceptCredential = autoAccept
-	
+
 	// Store preview attributes if provided
 	if credentialPreview != nil && len(credentialPreview.Attributes) > 0 {
 		rec.PreviewAttributes = make(map[string]string)
@@ -457,11 +507,11 @@ func (cs *CredentialService) CreateProposal(
 			rec.PreviewAttributes[attr.Name] = attr.Value
 		}
 	}
-	
+
 	if err := cs.repo.Save(cs.context, rec); err != nil {
 		return nil, nil, err
 	}
-	
+
 	// Build proposal message
 	proposal := credmsgs.NewProposeCredentialV2()
 	proposal.SetThreadId(thid)
@@ -469,7 +519,7 @@ func (cs *CredentialService) CreateProposal(
 	proposal.Goal = goal
 	proposal.GoalCode = goalCode
 	proposal.CredentialPreview = credentialPreview
-	
+
 	// Add AnonCreds format proposal
 	// For now, just indicate we support AnonCreds
 	proposal.Formats = []credmsgs.FormatEntry{
@@ -485,7 +535,7 @@ func (cs *CredentialService) CreateProposal(
 			},
 		},
 	}
-	
+
 	cs.emit("credentials.proposalSent", map[string]string{"recordId": rec.ID, "connectionId": connectionId})
 	return proposal, rec, nil
 }
@@ -501,7 +551,7 @@ func (cs *CredentialService) ProcessProposal(
 	rec.ThreadId = thid
 	rec.Role = "issuer"
 	rec.State = credrecs.StateProposalReceived
-	
+
 	// Store preview attributes if provided
 	if proposal.CredentialPreview != nil && len(proposal.CredentialPreview.Attributes) > 0 {
 		rec.PreviewAttributes = make(map[string]string)
@@ -509,7 +559,7 @@ func (cs *CredentialService) ProcessProposal(
 			rec.PreviewAttributes[attr.Name] = attr.Value
 		}
 	}
-	
+
 	// Store formats from proposal
 	if len(proposal.Formats) > 0 {
 		rec.Formats = make([]string, 0, len(proposal.Formats))
@@ -517,11 +567,11 @@ func (cs *CredentialService) ProcessProposal(
 			rec.Formats = append(rec.Formats, f.Format)
 		}
 	}
-	
+
 	if err := cs.repo.Save(cs.context, rec); err != nil {
 		return nil, err
 	}
-	
+
 	cs.emit("credentials.proposalReceived", map[string]string{"recordId": rec.ID, "connectionId": connectionId})
 	return rec, nil
 }
@@ -532,41 +582,41 @@ func (cs *CredentialService) DeclineOffer(thid string, reason string) (*credmsgs
 	if err != nil {
 		return nil, err
 	}
-	
+
 	rec.State = credrecs.StateDeclined
 	if err := cs.repo.Update(cs.context, rec); err != nil {
 		return nil, err
 	}
-	
+
 	problemReport := credmsgs.NewCredentialProblemReportV2(
 		credmsgs.ProblemCodeOfferNotAccepted,
 		reason,
 	)
 	problemReport.SetThreadId(thid)
-	
+
 	cs.emit("credentials.declined", map[string]string{"recordId": rec.ID, "reason": reason})
 	return problemReport, nil
 }
 
-// DeclineRequest declines a credential request  
+// DeclineRequest declines a credential request
 func (cs *CredentialService) DeclineRequest(thid string, reason string) (*credmsgs.CredentialProblemReportV2, error) {
 	rec, err := cs.repo.FindByThreadId(cs.context, thid)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	rec.State = credrecs.StateDeclined
 	if err := cs.repo.Update(cs.context, rec); err != nil {
 		return nil, err
 	}
-	
+
 	// Create problem report
 	problemReport := credmsgs.NewCredentialProblemReportV2(
 		credmsgs.ProblemCodeRequestNotAccepted,
 		reason,
 	)
 	problemReport.SetThreadId(thid)
-	
+
 	cs.emit("credentials.declined", map[string]string{"recordId": rec.ID, "reason": reason})
 	return problemReport, nil
 }
@@ -577,19 +627,19 @@ func (cs *CredentialService) AbandonCredentialExchange(thid string, reason strin
 	if err != nil {
 		return nil, err
 	}
-	
+
 	rec.State = credrecs.StateAbandoned
 	if err := cs.repo.Update(cs.context, rec); err != nil {
 		return nil, err
 	}
-	
+
 	// Create problem report
 	problemReport := credmsgs.NewCredentialProblemReportV2(
 		credmsgs.ProblemCodeAbandoned,
 		reason,
 	)
 	problemReport.SetThreadId(thid)
-	
+
 	cs.emit("credentials.abandoned", map[string]string{"recordId": rec.ID, "reason": reason})
 	return problemReport, nil
 }
@@ -605,7 +655,7 @@ func (cs *CredentialService) ProcessProblemReport(
 		log.Printf("No credential record found for thread %s", thid)
 		return nil
 	}
-	
+
 	// Update state based on problem code
 	switch problemReport.Code {
 	case credmsgs.ProblemCodeAbandoned:
@@ -616,27 +666,27 @@ func (cs *CredentialService) ProcessProblemReport(
 		rec.State = credrecs.StateDeclined
 	default:
 		// For other errors, keep the current state but log the problem
-		log.Printf("Problem report received for thread %s: %s - %s", 
+		log.Printf("Problem report received for thread %s: %s - %s",
 			thid, problemReport.Code, problemReport.Comment)
 	}
-	
+
 	// Store problem report details in tags for querying
 	rec.SetTag("problemCode", problemReport.Code)
 	if problemReport.Comment != "" {
 		rec.SetTag("problemComment", problemReport.Comment)
 	}
-	
+
 	if err := cs.repo.Update(cs.context, rec); err != nil {
 		return err
 	}
-	
+
 	cs.emit("credentials.problemReportReceived", map[string]interface{}{
 		"recordId": rec.ID,
 		"code":     problemReport.Code,
 		"comment":  problemReport.Comment,
 		"state":    string(rec.State),
 	})
-	
+
 	return nil
 }
 
@@ -693,8 +743,7 @@ func (cs *CredentialService) isContentApproved(rec *credrecs.CredentialRecord) b
 	// Implement your content approval logic here
 	// For example, check if attributes match expected values
 	// or if credential definition is from trusted issuer
-	
+
 	// For now, return false (manual approval required)
 	return false
 }
-

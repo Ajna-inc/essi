@@ -1,23 +1,27 @@
 package services
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
+	"github.com/ajna-inc/essi/pkg/core/common"
 	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/di"
-	"github.com/ajna-inc/essi/pkg/core/storage"
-	"github.com/ajna-inc/essi/pkg/core/common"
 	"github.com/ajna-inc/essi/pkg/core/encoding"
+	coreevents "github.com/ajna-inc/essi/pkg/core/events"
+	"github.com/ajna-inc/essi/pkg/core/storage"
 	"github.com/ajna-inc/essi/pkg/core/utils"
 	"github.com/ajna-inc/essi/pkg/core/wallet"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"
+	jws "github.com/ajna-inc/essi/pkg/didcomm/crypto/jws"
 	conmsg "github.com/ajna-inc/essi/pkg/didcomm/modules/connections/messages"
 	"github.com/ajna-inc/essi/pkg/didcomm/modules/oob"
 	oobMessages "github.com/ajna-inc/essi/pkg/didcomm/modules/oob/messages"
+	routerec "github.com/ajna-inc/essi/pkg/didcomm/modules/routing/records"
 	dids "github.com/ajna-inc/essi/pkg/dids"
 	"github.com/ajna-inc/essi/pkg/dids/api"
 	"github.com/ajna-inc/essi/pkg/dids/domain"
@@ -158,6 +162,18 @@ func (cs *ConnectionService) GetContext() *context.AgentContext {
 func (cs *ConnectionService) GetDefaultServiceEndpoint() string {
 	if cs == nil || cs.context == nil || cs.context.Config == nil {
 		return "http://localhost:3001"
+	}
+	// If a default mediator exists (recipient role), prefer its endpoint
+	if cs.context.DependencyManager != nil {
+		if dm, ok := cs.context.DependencyManager.(di.DependencyManager); ok {
+			if dep, err := dm.Resolve(di.TokenMediationRepository); err == nil {
+				if repo, ok := dep.(routerec.Repository); ok && repo != nil {
+					if rec, err := repo.FindDefault(cs.context); err == nil && rec != nil && rec.Endpoint != "" {
+						return rec.Endpoint
+					}
+				}
+			}
+		}
 	}
 	if len(cs.context.Config.Endpoints) > 0 && cs.context.Config.Endpoints[0] != "" {
 		return cs.context.Config.Endpoints[0]
@@ -539,7 +555,7 @@ func (cs *ConnectionService) ProcessOOBInvitation(invitation *oobMessages.OutOfB
 		ServiceEndpoint: serviceEndpoint,
 		RecipientKeys:   []string{"#key-1"},
 		RoutingKeys:     []string{},
-		Accept:          []string{"didcomm/aip2;env=rfc587", "didcomm/aip2;env=rfc19"},
+		Accept:          []string{"didcomm/aip2;env=rfc587", "didcomm/aip2;env=rfc19", "didcomm:transport/queue"},
 	})
 	_, longDid4, perr := peer.CreateDidPeerNumAlgo4FromDidDocument(didDocFor4)
 	if perr != nil || longDid4 == "" {
@@ -551,7 +567,7 @@ func (cs *ConnectionService) ProcessOOBInvitation(invitation *oobMessages.OutOfB
 			"serviceEndpoint": serviceEndpoint,
 			"recipientKeys":   []string{didKey},
 			"routingKeys":     []string{},
-			"accept":          []string{"didcomm/aip2;env=rfc587", "didcomm/aip2;env=rfc19"},
+			"accept":          []string{"didcomm/aip2;env=rfc587", "didcomm/aip2;env=rfc19", "didcomm:transport/queue"},
 		}
 		elem, perr2 := peer.CreatePeerDidElement(peer.PurposeService, dids.ServiceTypeDIDComm, svc)
 		if perr2 != nil {
@@ -630,27 +646,63 @@ func (cs *ConnectionService) ProcessOOBInvitation(invitation *oobMessages.OutOfB
 // createConnectionRequest creates a connection request message (either DID Exchange or Connections 1.0)
 func (cs *ConnectionService) createConnectionRequest(invitation *oobMessages.OutOfBandInvitationMessage, connectionRecord *ConnectionRecord, didDoc *dids.DidDoc, config ProcessInvitationConfig) interface{} {
 	// Check which protocol to use
-	if connectionRecord.Protocol == "https://didcomm.org/didexchange/1.1" {
-		request := &DidExchangeRequestMessage{
-			BaseMessage: messages.NewBaseMessage("https://didcomm.org/didexchange/1.1/request"),
-			Label:       config.Label,
-			Did:         connectionRecord.Did,
-		}
+    if connectionRecord.Protocol == "https://didcomm.org/didexchange/1.1" {
+        request := &DidExchangeRequestMessage{
+            BaseMessage: messages.NewBaseMessage("https://didcomm.org/didexchange/1.1/request"),
+            Label:       config.Label,
+            Did:         connectionRecord.Did,
+        }
 
-		// Attach the DID document
-		request.DidDocAttach = &messages.Attachment{
-			Id:       common.GenerateUUID(),
-			MimeType: "application/json",
-			Data: messages.AttachmentData{
-				Json: didDoc,
-			},
-		}
+        // Ensure BaseMessage carries top-level fields for DIDComm (ToJSON of BaseMessage only includes AdditionalFields)
+        if request.BaseMessage.AdditionalFields == nil { request.BaseMessage.AdditionalFields = make(map[string]interface{}) }
+        if connectionRecord.Did != "" {
+            request.BaseMessage.AdditionalFields["did"] = connectionRecord.Did
+        }
+        if config.Label != "" {
+            request.BaseMessage.AdditionalFields["label"] = config.Label
+        }
 
-		// Set proper threading per OOB RFC 0434 + RFC 0160:
-		// - thid MUST be the request message id
-		// - pthid MUST reference the OOB invitation id
-		request.SetThreadId(request.GetId())
-		request.SetParentThreadId(invitation.GetId())
+        // Prefer signed did_doc~attach (JWS). Fallback to base64 inline
+        var didDocAttach interface{}
+        // Try JWS signing via DI JwsService
+        if cs.context != nil && cs.context.DependencyManager != nil && connectionRecord.MyKeyId != "" {
+            if dm, ok := cs.context.DependencyManager.(di.DependencyManager); ok {
+                if dep, err := dm.Resolve(di.TokenJwsService); err == nil {
+                    if jwsSvc, ok := dep.(interface{ CreateSignedAttachment(*context.AgentContext, interface{}, string, string) (*jws.Attachment, error) }); ok {
+                        if key, kerr := cs.walletService.GetKey(connectionRecord.MyKeyId); kerr == nil && key != nil {
+                            if fp, fErr := peer.Ed25519Fingerprint(key.PublicKey); fErr == nil {
+                                kid := "did:key:" + fp
+                                if att, aErr := jwsSvc.CreateSignedAttachment(cs.context, didDoc, connectionRecord.MyKeyId, kid); aErr == nil && att != nil {
+                                    didDocAttach = att
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if didDocAttach == nil {
+            // Fallback to unsigned base64 attachment
+            if b, mErr := json.Marshal(didDoc); mErr == nil {
+                b64 := base64.RawURLEncoding.EncodeToString(b)
+                didDocAttach = map[string]interface{}{
+                    "@id":       common.GenerateUUID(),
+                    "mime-type": "application/json",
+                    "data": map[string]interface{}{
+                        "base64": b64,
+                    },
+                }
+            }
+        }
+        if didDocAttach != nil {
+            request.BaseMessage.AdditionalFields["did_doc~attach"] = didDocAttach
+        }
+
+        // Set proper threading per OOB RFC 0434 + RFC 0160:
+        // - thid MUST be the request message id
+        // - pthid MUST reference the OOB invitation id
+        request.SetThreadId(request.GetId())
+        request.SetParentThreadId(invitation.GetId())
 
 		// Request return route so responder can correlate over the same session
 		if request.GetTransport() == nil {
@@ -744,6 +796,29 @@ func (cs *ConnectionService) UpdateConnectionState(connectionId string, newState
 	}
 
 	log.Printf("🔄 Updated connection %s state to %s", connectionId, newState)
+	// Emit connection.stateChanged event for easier correlation in tests and apps
+    if cs.context != nil && cs.context.DependencyManager != nil {
+        if dm, ok := cs.context.DependencyManager.(di.DependencyManager); ok {
+            if any, err := dm.Resolve(di.TokenEventBusService); err == nil {
+                if bus, ok := any.(coreevents.Bus); ok && bus != nil {
+                    payload := map[string]interface{}{
+                        "id":           record.ID,
+                        "connectionId": record.ID,
+                        "state":        string(newState),
+                        "role":         record.Role,
+                        "did":          record.Did,
+                        "theirDid":     record.TheirDid,
+                    }
+                    if record.Tags != nil {
+                        if th, ok := record.Tags["threadId"]; ok {
+                            payload["threadId"] = th
+                        }
+                    }
+                    bus.Publish(coreevents.EventConnectionStateChanged, payload)
+                }
+            }
+        }
+    }
 	return nil
 }
 
@@ -827,6 +902,19 @@ func (cs *ConnectionService) createDidDocumentForPeerDid(peerDid string, publicK
 			// Aries 0160/Credo-TS DIDDoc expects verification method ids in recipientKeys
 			// Put the 2018 (base58 verkey) first for maximum interop; include 2020 multibase as secondary
 			RecipientKeys: []string{vmID, pk2020.Id},
+			Accept:        []string{"didcomm/aip2;env=rfc587", "didcomm/aip2;env=rfc19", "didcomm:transport/queue"},
+		}
+		// If mediator default exists, include its routing keys
+		if cs.context.DependencyManager != nil {
+			if dm, ok := cs.context.DependencyManager.(di.DependencyManager); ok {
+				if dep, err := dm.Resolve(di.TokenMediationRepository); err == nil {
+					if repo, ok := dep.(routerec.Repository); ok && repo != nil {
+						if rec, err := repo.FindDefault(cs.context); err == nil && rec != nil && len(rec.RoutingKeys) > 0 {
+							service.RoutingKeys = rec.RoutingKeys
+						}
+					}
+				}
+			}
 		}
 		didDoc.AddService(service)
 	}

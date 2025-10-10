@@ -10,7 +10,7 @@ import (
 // ConnectionAckMessage represents a connection acknowledgment message
 type ConnectionAckMessage struct {
 	*messages.BaseMessage
-	
+
 	// Optional status field
 	Status string `json:"status,omitempty"`
 }
@@ -24,7 +24,7 @@ const (
 // NewConnectionAckMessage creates a new connection ACK message
 func NewConnectionAckMessage() *ConnectionAckMessage {
 	baseMessage := messages.NewBaseMessage(ConnectionAckType)
-	
+
 	return &ConnectionAckMessage{
 		BaseMessage: baseMessage,
 		Status:      "OK",
@@ -34,7 +34,7 @@ func NewConnectionAckMessage() *ConnectionAckMessage {
 // NewConnectionAckMessageWithId creates a new connection ACK with specific ID
 func NewConnectionAckMessageWithId(id string) *ConnectionAckMessage {
 	baseMessage := messages.NewBaseMessageWithId(id, ConnectionAckType)
-	
+
 	return &ConnectionAckMessage{
 		BaseMessage: baseMessage,
 		Status:      "OK",
@@ -44,14 +44,14 @@ func NewConnectionAckMessageWithId(id string) *ConnectionAckMessage {
 // NewConnectionAckFromMessage creates an ACK message from another message
 func NewConnectionAckFromMessage(originalMessage messages.MessageInterface) *ConnectionAckMessage {
 	ack := NewConnectionAckMessage()
-	
+
 	// Set threading to reference the original message
 	if originalMessage.GetThreadId() != "" {
 		ack.SetThreadId(originalMessage.GetThreadId())
 	} else {
 		ack.SetThreadId(originalMessage.GetId())
 	}
-	
+
 	return ack
 }
 
@@ -70,12 +70,12 @@ func (m *ConnectionAckMessage) Validate() error {
 	if err := m.BaseMessage.Validate(); err != nil {
 		return err
 	}
-	
+
 	// ACK messages should have a thread ID
 	if m.GetThreadId() == "" {
 		return fmt.Errorf("connection ACK must reference a thread")
 	}
-	
+
 	return nil
 }
 
@@ -95,6 +95,6 @@ func (m *ConnectionAckMessage) Clone() messages.MessageInterface {
 		BaseMessage: m.BaseMessage.Clone().(*messages.BaseMessage),
 		Status:      m.Status,
 	}
-	
+
 	return clone
 }

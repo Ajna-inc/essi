@@ -51,41 +51,41 @@ func (c *AskarDatabaseConfig) GetConnectionString(storeID string) (string, error
 		if err := mapToStruct(c.Config, config); err != nil {
 			return "", fmt.Errorf("invalid sqlite config: %w", err)
 		}
-		
+
 		if config.InMemory {
 			return fmt.Sprintf("sqlite://:memory:"), nil
 		}
-		
+
 		if config.Path == "" {
 			return "", fmt.Errorf("sqlite path is required when not using in-memory database")
 		}
-		
+
 		return fmt.Sprintf("sqlite://%s", config.Path), nil
-		
+
 	case "postgres":
 		config := &AskarPostgresConfig{}
 		if err := mapToStruct(c.Config, config); err != nil {
 			return "", fmt.Errorf("invalid postgres config: %w", err)
 		}
-		
+
 		if config.Host == "" || config.User == "" || config.DatabaseName == "" {
 			return "", fmt.Errorf("postgres host, user, and database name are required")
 		}
-		
+
 		port := config.Port
 		if port == 0 {
 			port = 5432
 		}
-		
+
 		connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
 			config.User, config.Password, config.Host, port, config.DatabaseName)
-		
+
 		if config.Schema != "" {
 			connStr += fmt.Sprintf("?schema=%s", config.Schema)
 		}
-		
+
 		return connStr, nil
-		
+
 	default:
 		return "", fmt.Errorf("unsupported database type: %s", c.Type)
 	}
@@ -96,7 +96,7 @@ func (c *AskarStoreConfig) SetDefaults() {
 	if c.KeyDerivationMethod == "" {
 		c.KeyDerivationMethod = askar.KdfArgon2iMod
 	}
-	
+
 	if c.Database == nil {
 		c.Database = &AskarDatabaseConfig{
 			Type: "sqlite",
@@ -112,15 +112,15 @@ func (c *AskarStoreConfig) Validate() error {
 	if c.ID == "" {
 		return fmt.Errorf("store ID is required")
 	}
-	
+
 	if c.Key == "" {
 		return fmt.Errorf("store key is required")
 	}
-	
+
 	if c.Database == nil {
 		return fmt.Errorf("database configuration is required")
 	}
-	
+
 	// Validate key derivation method
 	switch c.KeyDerivationMethod {
 	case askar.KdfArgon2iMod, askar.KdfArgon2iInt, askar.KdfRaw, "":
@@ -128,7 +128,7 @@ func (c *AskarStoreConfig) Validate() error {
 	default:
 		return fmt.Errorf("invalid key derivation method: %s", c.KeyDerivationMethod)
 	}
-	
+
 	return nil
 }
 
@@ -144,7 +144,7 @@ func mapToStruct(m map[string]interface{}, v interface{}) error {
 		if inMemory, ok := m["inMemory"].(bool); ok {
 			target.InMemory = inMemory
 		}
-		
+
 	case *AskarPostgresConfig:
 		if host, ok := m["host"].(string); ok {
 			target.Host = host
@@ -165,6 +165,6 @@ func mapToStruct(m map[string]interface{}, v interface{}) error {
 			target.Schema = schema
 		}
 	}
-	
+
 	return nil
 }

@@ -15,6 +15,10 @@ func DidKeyToBase58(kid string) string {
 	// Strip did:key: prefix
 	if strings.HasPrefix(kid, "did:key:") {
 		kid = strings.TrimPrefix(kid, "did:key:")
+		// drop optional fragment if present
+		if idx := strings.Index(kid, "#"); idx != -1 {
+			kid = kid[:idx]
+		}
 	}
 	// Must be multibase z
 	if !strings.HasPrefix(kid, "z") {

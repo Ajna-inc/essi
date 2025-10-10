@@ -9,7 +9,6 @@ import (
 	"github.com/ajna-inc/essi/pkg/core/storage"
 )
 
-
 // AskarRepository implements Repository using Askar storage
 type AskarRepository struct {
 	storage storage.StorageService
@@ -38,7 +37,7 @@ func (r *AskarRepository) Save(ctx *context.AgentContext, record *CredentialReco
 	if record.BaseRecord.Type == "" {
 		record.BaseRecord.Type = "CredentialRecord"
 	}
-	
+
 	// Add tags for querying
 	record.BaseRecord.SetTag("threadId", record.ThreadId)
 	record.BaseRecord.SetTag("connectionId", record.ConnectionId)
@@ -65,7 +64,7 @@ func (r *AskarRepository) Update(ctx *context.AgentContext, record *CredentialRe
 	if record.BaseRecord.Type == "" {
 		record.BaseRecord.Type = "CredentialRecord"
 	}
-	
+
 	// Update tags
 	record.BaseRecord.SetTag("threadId", record.ThreadId)
 	record.BaseRecord.SetTag("connectionId", record.ConnectionId)
@@ -106,7 +105,7 @@ func (r *AskarRepository) FindById(ctx *context.AgentContext, id string) (*Crede
 // FindByThreadId retrieves a credential record by thread ID
 func (r *AskarRepository) FindByThreadId(ctx *context.AgentContext, threadID string) (*CredentialRecord, error) {
 	query := storage.NewQuery().WithTag("threadId", threadID)
-	
+
 	record, err := r.storage.FindSingleByQuery(ctx.Context, "CredentialRecord", *query)
 	if err != nil {
 		return nil, err
@@ -134,7 +133,7 @@ func (r *AskarRepository) FindByThreadId(ctx *context.AgentContext, threadID str
 // GetByConnectionID retrieves all credential records for a connection
 func (r *AskarRepository) GetByConnectionID(ctx *context.AgentContext, connectionID string) ([]*CredentialRecord, error) {
 	query := storage.NewQuery().WithTag("connectionId", connectionID)
-	
+
 	records, err := r.storage.FindByQuery(ctx.Context, "CredentialRecord", *query)
 	if err != nil {
 		return nil, err
@@ -205,7 +204,7 @@ func (r *AskarRepository) Delete(ctx *context.AgentContext, id string) error {
 // GetByState retrieves credential records by state
 func (r *AskarRepository) GetByState(ctx *context.AgentContext, state CredentialState) ([]*CredentialRecord, error) {
 	query := storage.NewQuery().WithTag("state", string(state))
-	
+
 	records, err := r.storage.FindByQuery(ctx.Context, "CredentialRecord", *query)
 	if err != nil {
 		return nil, err
@@ -239,7 +238,7 @@ func (r *AskarRepository) GetByState(ctx *context.AgentContext, state Credential
 // GetByRole retrieves credential records by role
 func (r *AskarRepository) GetByRole(role string) ([]*CredentialRecord, error) {
 	query := storage.NewQuery().WithTag("role", string(role))
-	
+
 	records, err := r.storage.FindByQuery(stdcontext.Background(), "CredentialRecord", *query)
 	if err != nil {
 		return nil, err

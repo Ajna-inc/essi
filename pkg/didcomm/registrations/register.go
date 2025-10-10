@@ -71,7 +71,11 @@ func RegisterAllModuleHandlers(registry *transport.MessageHandlerRegistry) {
 
 	// Message Pickup
 	registry.RegisterMessageHandler("https://didcomm.org/messagepickup/1.0/batch", messagepickupHandlers.V1BatchHandlerFunc)
+	registry.RegisterMessageHandler("https://didcomm.org/messagepickup/1.0/batch-pickup", messagepickupHandlers.V1BatchPickupHandlerFunc)
+	registry.RegisterMessageHandler("https://didcomm.org/messagepickup/2.0/status-request", messagepickupHandlers.V2StatusRequestHandlerFunc)
+	registry.RegisterMessageHandler("https://didcomm.org/messagepickup/2.0/delivery-request", messagepickupHandlers.V2DeliveryRequestHandlerFunc)
 	registry.RegisterMessageHandler("https://didcomm.org/messagepickup/2.0/delivery", messagepickupHandlers.V2DeliveryHandlerFunc)
+	registry.RegisterMessageHandler("https://didcomm.org/messagepickup/2.0/messages-received", messagepickupHandlers.V2MessagesReceivedHandlerFunc)
 
 	// Basic messages and problem report
 	registry.RegisterMessageHandler(basicHandlers.BasicMessageType, basicHandlers.BasicMessageHandlerFunc)

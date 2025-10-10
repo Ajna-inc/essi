@@ -23,18 +23,18 @@ var (
 type AnonCredsHolderService interface {
 	// Link secret management
 	CreateLinkSecret(ctx *context.AgentContext, options *CreateLinkSecretOptions) (*CreateLinkSecretReturn, error)
-	
+
 	// Credential operations
 	CreateCredentialRequest(ctx *context.AgentContext, options *CreateCredentialRequestOptions) (*CreateCredentialRequestReturn, error)
 	StoreCredential(ctx *context.AgentContext, options *StoreCredentialOptions, metadata map[string]interface{}) (string, error)
 	GetCredential(ctx *context.AgentContext, options *GetCredentialOptions) (*AnonCredsCredentialInfo, error)
 	GetCredentials(ctx *context.AgentContext, options *GetCredentialsOptions) ([]*AnonCredsCredentialInfo, error)
 	DeleteCredential(ctx *context.AgentContext, credentialId string) error
-	
+
 	// Proof operations
 	CreateProof(ctx *context.AgentContext, options *CreateProofOptions) (*AnonCredsProof, error)
 	GetCredentialsForProofRequest(ctx *context.AgentContext, options *GetCredentialsForProofRequestOptions) (*GetCredentialsForProofRequestReturn, error)
-	
+
 	// Utility
 	GenerateNonce(ctx *context.AgentContext) string
 }
@@ -65,9 +65,9 @@ type CreateLinkSecretReturn struct {
 }
 
 type CreateCredentialRequestOptions struct {
-	CredentialOffer          map[string]interface{} `json:"credentialOffer"`
-	CredentialDefinition     map[string]interface{} `json:"credentialDefinition"`
-	LinkSecretId            string                 `json:"linkSecretId"`
+	CredentialOffer      map[string]interface{} `json:"credentialOffer"`
+	CredentialDefinition map[string]interface{} `json:"credentialDefinition"`
+	LinkSecretId         string                 `json:"linkSecretId"`
 }
 
 type CreateCredentialRequestReturn struct {
@@ -93,10 +93,10 @@ type GetCredentialsOptions struct {
 }
 
 type CredentialFilter struct {
-	SchemaId              string            `json:"schemaId,omitempty"`
+	SchemaId               string            `json:"schemaId,omitempty"`
 	CredentialDefinitionId string            `json:"credentialDefinitionId,omitempty"`
-	IssuerDid             string            `json:"issuerDid,omitempty"`
-	AttributeValues       map[string]string `json:"attributeValues,omitempty"`
+	IssuerDid              string            `json:"issuerDid,omitempty"`
+	AttributeValues        map[string]string `json:"attributeValues,omitempty"`
 }
 
 type AnonCredsCredentialInfo struct {
@@ -111,12 +111,12 @@ type AnonCredsCredentialInfo struct {
 }
 
 type CreateProofOptions struct {
-	ProofRequest            map[string]interface{}            `json:"proofRequest"`
-	SelectedCredentials     map[string]interface{}            `json:"selectedCredentials"`
-	Schemas                 map[string]map[string]interface{} `json:"schemas"`
-	CredentialDefinitions   map[string]map[string]interface{} `json:"credentialDefinitions"`
-	LinkSecretId            string                            `json:"linkSecretId"`
-	RevocationStates        map[string]interface{}            `json:"revocationStates,omitempty"`
+	ProofRequest          map[string]interface{}            `json:"proofRequest"`
+	SelectedCredentials   map[string]interface{}            `json:"selectedCredentials"`
+	Schemas               map[string]map[string]interface{} `json:"schemas"`
+	CredentialDefinitions map[string]map[string]interface{} `json:"credentialDefinitions"`
+	LinkSecretId          string                            `json:"linkSecretId"`
+	RevocationStates      map[string]interface{}            `json:"revocationStates,omitempty"`
 }
 
 type AnonCredsProof struct {
@@ -126,33 +126,33 @@ type AnonCredsProof struct {
 }
 
 type GetCredentialsForProofRequestOptions struct {
-	ProofRequest     map[string]interface{} `json:"proofRequest"`
-	AttributeFilter  map[string]interface{} `json:"attributeFilter,omitempty"`
+	ProofRequest    map[string]interface{} `json:"proofRequest"`
+	AttributeFilter map[string]interface{} `json:"attributeFilter,omitempty"`
 }
 
 type GetCredentialsForProofRequestReturn struct {
-	Attributes  map[string][]*AnonCredsRequestedAttributeMatch  `json:"attributes"`
-	Predicates  map[string][]*AnonCredsRequestedPredicateMatch  `json:"predicates"`
+	Attributes map[string][]*AnonCredsRequestedAttributeMatch `json:"attributes"`
+	Predicates map[string][]*AnonCredsRequestedPredicateMatch `json:"predicates"`
 }
 
 type AnonCredsRequestedAttributeMatch struct {
-	CredentialId   string              `json:"credentialId"`
-	RevealedValues map[string]string   `json:"revealedValues"`
+	CredentialId   string                   `json:"credentialId"`
+	RevealedValues map[string]string        `json:"revealedValues"`
 	CredentialInfo *AnonCredsCredentialInfo `json:"credentialInfo"`
 }
 
 type AnonCredsRequestedPredicateMatch struct {
-	CredentialId   string              `json:"credentialId"`
-	PredicateValue int                 `json:"predicateValue"`
+	CredentialId   string                   `json:"credentialId"`
+	PredicateValue int                      `json:"predicateValue"`
 	CredentialInfo *AnonCredsCredentialInfo `json:"credentialInfo"`
 }
 
 // Issuer option structures
 type CreateSchemaOptions struct {
-	IssuerId          string   `json:"issuerId"`
-	Name              string   `json:"name"`
-	Version           string   `json:"version"`
-	AttributeNames    []string `json:"attributeNames"`
+	IssuerId       string   `json:"issuerId"`
+	Name           string   `json:"name"`
+	Version        string   `json:"version"`
+	AttributeNames []string `json:"attributeNames"`
 }
 
 type AnonCredsSchema struct {
@@ -163,11 +163,11 @@ type AnonCredsSchema struct {
 }
 
 type CreateCredentialDefinitionOptions struct {
-	Schema                        *AnonCredsSchema `json:"schema"`
-	SchemaId                      string          `json:"schemaId"`
-	IssuerId                      string          `json:"issuerId"`
-	Tag                           string          `json:"tag"`
-	SupportRevocation             bool            `json:"supportRevocation"`
+	Schema            *AnonCredsSchema `json:"schema"`
+	SchemaId          string           `json:"schemaId"`
+	IssuerId          string           `json:"issuerId"`
+	Tag               string           `json:"tag"`
+	SupportRevocation bool             `json:"supportRevocation"`
 }
 
 type CreateCredentialDefinitionReturn struct {
@@ -189,26 +189,26 @@ type AnonCredsCredentialOffer struct {
 }
 
 type CreateCredentialOptions struct {
-	CredentialOffer             map[string]interface{}       `json:"credentialOffer"`
-	CredentialRequest           map[string]interface{}       `json:"credentialRequest"`
-	CredentialValues            map[string]map[string]string `json:"credentialValues"`
-	RevocationRegistryId        string                       `json:"revocationRegistryId,omitempty"`
-	RevocationStatusList        map[string]interface{}       `json:"revocationStatusList,omitempty"`
-	RevocationConfiguration     map[string]interface{}       `json:"revocationConfiguration,omitempty"`
+	CredentialOffer         map[string]interface{}       `json:"credentialOffer"`
+	CredentialRequest       map[string]interface{}       `json:"credentialRequest"`
+	CredentialValues        map[string]map[string]string `json:"credentialValues"`
+	RevocationRegistryId    string                       `json:"revocationRegistryId,omitempty"`
+	RevocationStatusList    map[string]interface{}       `json:"revocationStatusList,omitempty"`
+	RevocationConfiguration map[string]interface{}       `json:"revocationConfiguration,omitempty"`
 }
 
 type CreateCredentialReturn struct {
-	Credential                     map[string]interface{} `json:"credential"`
-	CredentialRevocationId         string                `json:"credentialRevocationId,omitempty"`
-	RevocationRegistryDefinition   map[string]interface{} `json:"revocationRegistryDefinition,omitempty"`
+	Credential                   map[string]interface{} `json:"credential"`
+	CredentialRevocationId       string                 `json:"credentialRevocationId,omitempty"`
+	RevocationRegistryDefinition map[string]interface{} `json:"revocationRegistryDefinition,omitempty"`
 }
 
 type CreateRevocationRegistryDefinitionOptions struct {
-	CredentialDefinitionId string `json:"credentialDefinitionId"`
-	IssuerId               string `json:"issuerId"`
-	Tag                    string `json:"tag"`
+	CredentialDefinitionId  string `json:"credentialDefinitionId"`
+	IssuerId                string `json:"issuerId"`
+	Tag                     string `json:"tag"`
 	MaximumCredentialNumber int    `json:"maximumCredentialNumber"`
-	TailsDirectoryPath     string `json:"tailsDirectoryPath,omitempty"`
+	TailsDirectoryPath      string `json:"tailsDirectoryPath,omitempty"`
 }
 
 type CreateRevocationRegistryDefinitionReturn struct {
@@ -219,17 +219,17 @@ type CreateRevocationRegistryDefinitionReturn struct {
 type UpdateRevocationStatusListOptions struct {
 	RevocationRegistryDefinition map[string]interface{} `json:"revocationRegistryDefinition"`
 	RevocationStatusList         map[string]interface{} `json:"revocationStatusList"`
-	RevokedCredentialIds         []string              `json:"revokedCredentialIds"`
-	IssuedCredentialIds          []string              `json:"issuedCredentialIds"`
-	Timestamp                    int64                 `json:"timestamp,omitempty"`
+	RevokedCredentialIds         []string               `json:"revokedCredentialIds"`
+	IssuedCredentialIds          []string               `json:"issuedCredentialIds"`
+	Timestamp                    int64                  `json:"timestamp,omitempty"`
 }
 
 type RevocationStatusList struct {
-	IssuerId                     string                 `json:"issuerId"`
-	RevocationRegistryDefinitionId string                 `json:"revRegDefId"`
-	RevocationList               []int                  `json:"revocationList"`
-	CurrentAccumulator           string                 `json:"currentAccumulator"`
-	Timestamp                    int64                  `json:"timestamp"`
+	IssuerId                       string `json:"issuerId"`
+	RevocationRegistryDefinitionId string `json:"revRegDefId"`
+	RevocationList                 []int  `json:"revocationList"`
+	CurrentAccumulator             string `json:"currentAccumulator"`
+	Timestamp                      int64  `json:"timestamp"`
 }
 
 // Verifier option structures

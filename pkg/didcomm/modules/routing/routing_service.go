@@ -35,11 +35,11 @@ func (s *RoutingService) GetRouting(agentContext *context.AgentContext, params G
 	// 1. Check for configured mediators
 	// 2. Get routing keys from mediator
 	// 3. Return proper routing configuration
-	
+
 	// For now, return a basic configuration
 	return &RoutingConfig{
-		RecipientKey: "z6MkTestRecipientKey",  // This would be generated
-		RoutingKeys:  []string{},               // No mediators for now
+		RecipientKey: "z6MkTestRecipientKey",            // This would be generated
+		RoutingKeys:  []string{},                        // No mediators for now
 		Endpoints:    []string{"http://localhost:9002"}, // Default endpoint
 		MediatorId:   params.MediatorId,
 	}, nil

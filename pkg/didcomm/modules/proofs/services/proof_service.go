@@ -9,8 +9,8 @@ import (
 	"github.com/ajna-inc/essi/pkg/anoncreds/registry"
 	"github.com/ajna-inc/essi/pkg/anoncreds/services"
 	"github.com/ajna-inc/essi/pkg/anoncreds/services/holder"
-	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/common"
+	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"
 	proofmsgs "github.com/ajna-inc/essi/pkg/didcomm/modules/proofs/messages"
 	proofrecs "github.com/ajna-inc/essi/pkg/didcomm/modules/proofs/records"
@@ -50,7 +50,7 @@ func NewProofService(
 
 func (ps *ProofService) ProcessProofRequest(connectionId string, request *proofmsgs.RequestPresentationV2) (*proofmsgs.PresentationV2, *proofrecs.ProofRecord, error) {
 	thid := request.GetThreadId()
-	
+
 	record := proofrecs.NewProofRecord(common.GenerateUUID())
 	record.ConnectionId = connectionId
 	record.ThreadId = thid
@@ -66,7 +66,7 @@ func (ps *ProofService) ProcessProofRequest(connectionId string, request *proofm
 		if format.Format == FormatProofRequest {
 			if i < len(request.RequestPresentations) {
 				attachment := request.RequestPresentations[i]
-				
+
 				var data []byte
 				if attachment.Data != nil {
 					if attachment.Data.Base64 != "" {
@@ -115,9 +115,9 @@ func (ps *ProofService) ProcessProofRequest(connectionId string, request *proofm
 	anonCredsProof, err := ps.holder.CreateProof(ps.context, &services.CreateProofOptions{
 		ProofRequest:          proofRequest,
 		SelectedCredentials:   selectedCredentials,
-		Schemas:              schemas,
+		Schemas:               schemas,
 		CredentialDefinitions: credDefs,
-		LinkSecretId:         "default",
+		LinkSecretId:          "default",
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create proof: %w", err)
@@ -211,7 +211,7 @@ func (ps *ProofService) ProcessPresentation(
 		if format.Format == FormatProof {
 			if i < len(presentation.Presentations) {
 				attachment := presentation.Presentations[i]
-				
+
 				var data []byte
 				if attachment.Data != nil {
 					if attachment.Data.Base64 != "" {
@@ -303,7 +303,7 @@ func (ps *ProofService) ShouldAutoRespondToPresentation(
 	if proofRecord != nil && proofRecord.AutoAccept {
 		return true
 	}
-	
+
 	// TODO: Check config when available
 	// Default to auto-accepting for now (for testing)
 	return true
@@ -339,7 +339,7 @@ func (ps *ProofService) resolveProofDependencies(proof map[string]interface{}) (
 						credDefJSON, _ := json.Marshal(credDef)
 						var credDefMap map[string]interface{}
 						json.Unmarshal(credDefJSON, &credDefMap)
-						
+
 						// Fix double-nested structure: extract the inner value for anoncreds compatibility
 						if val, ok := credDefMap["value"].(map[string]interface{}); ok {
 							// Check if this is a double-nested structure
@@ -357,7 +357,7 @@ func (ps *ProofService) resolveProofDependencies(proof map[string]interface{}) (
 								}
 							}
 						}
-						
+
 						credDefs[credDefId] = credDefMap
 					}
 				}
@@ -396,8 +396,8 @@ func (ps *ProofService) GetProofRecordByThreadId(threadId string) (*proofrecs.Pr
 // autoSelectCredentials automatically selects credentials for proof request
 func (ps *ProofService) autoSelectCredentials(matches *services.GetCredentialsForProofRequestReturn, proofRequest map[string]interface{}) map[string]interface{} {
 	selected := map[string]interface{}{
-		"attributes": map[string]interface{}{},
-		"predicates": map[string]interface{}{},
+		"attributes":   map[string]interface{}{},
+		"predicates":   map[string]interface{}{},
 		"selfAttested": map[string]interface{}{},
 	}
 
@@ -430,7 +430,7 @@ func (ps *ProofService) autoSelectCredentials(matches *services.GetCredentialsFo
 	if reqAttrs, ok := proofRequest["requested_attributes"].(map[string]interface{}); ok {
 		attrs := selected["attributes"].(map[string]interface{})
 		selfAttested := selected["selfAttested"].(map[string]interface{})
-		
+
 		for referent, reqAttr := range reqAttrs {
 			if _, hasCredential := attrs[referent]; !hasCredential {
 				// Check if self-attestation is allowed

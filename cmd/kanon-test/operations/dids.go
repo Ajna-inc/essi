@@ -36,11 +36,11 @@ func (d *DIDOperations) CreateDID(method string, options map[string]interface{})
 		Method:  method,
 		Options: options,
 	})
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DID: %w", err)
 	}
-	
+
 	log.Printf("✅ Created DID: %s", result.Did)
 	return result, nil
 }
@@ -48,15 +48,15 @@ func (d *DIDOperations) CreateDID(method string, options map[string]interface{})
 // CreateKanonIssuerDID creates a new Kanon issuer DID
 func (d *DIDOperations) CreateKanonIssuerDID(suffix string) (string, error) {
 	issuerDid := fmt.Sprintf("did:kanon:testnet:issuer-%s", suffix)
-	
+
 	_, err := d.CreateDID("kanon", map[string]interface{}{
 		"did": issuerDid,
 	})
-	
+
 	if err != nil {
 		return "", err
 	}
-	
+
 	return issuerDid, nil
 }
 
@@ -75,4 +75,3 @@ func (d *DIDOperations) CreatePeerDID() (*dids.DidCreateResult, error) {
 func (d *DIDOperations) CreateKeyDID() (*dids.DidCreateResult, error) {
 	return d.CreateDID("key", nil)
 }
-

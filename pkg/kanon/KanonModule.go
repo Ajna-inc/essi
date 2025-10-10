@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	
-	"github.com/ajna-inc/essi/pkg/constants"
-	"github.com/ajna-inc/essi/pkg/plugins"
+
 	regsvc "github.com/ajna-inc/essi/pkg/anoncreds/registry"
 	regkanon "github.com/ajna-inc/essi/pkg/anoncreds/registry/kanon"
+	"github.com/ajna-inc/essi/pkg/constants"
 	dids "github.com/ajna-inc/essi/pkg/core/modules/dids"
 	"github.com/ajna-inc/essi/pkg/kanon/ledger"
+	"github.com/ajna-inc/essi/pkg/plugins"
 )
 
 // KanonModuleConfig represents configuration for Kanon module
@@ -41,7 +41,7 @@ func NewKanonModule(config *KanonModuleConfig) *KanonModule {
 			UseMemory: false,
 		}
 	}
-	
+
 	return &KanonModule{
 		BaseModule: *plugins.NewBaseModule("kanon", "1.0.0"),
 		config:     config,
@@ -58,14 +58,14 @@ func (m *KanonModule) Register(dependencyManager *plugins.DependencyManager) err
 	if !m.config.Enabled {
 		return nil
 	}
-	
+
 	// Initialize ledger client
 	ledgerClient, err := m.createLedgerClient()
 	if err != nil {
 		return fmt.Errorf("failed to create Kanon ledger client: %w", err)
 	}
 	m.ledgerClient = ledgerClient
-	
+
 	// Register the Kanon API
 	dependencyManager.RegisterContextScoped(
 		plugins.NewInjectionToken("kanonApi"),
@@ -76,7 +76,7 @@ func (m *KanonModule) Register(dependencyManager *plugins.DependencyManager) err
 			}
 		},
 	)
-	
+
 	// Register Kanon ledger service
 	dependencyManager.RegisterSingleton(
 		KanonLedgerToken,
@@ -84,13 +84,13 @@ func (m *KanonModule) Register(dependencyManager *plugins.DependencyManager) err
 			return m.ledgerClient
 		},
 	)
-	
+
 	// Register Kanon registry with AnonCreds registry service
 	m.registerWithAnonCredsRegistry(dependencyManager)
-	
+
 	// Register Kanon DID resolver
 	m.registerDidResolver(dependencyManager)
-	
+
 	// Register Kanon-specific services
 	dependencyManager.RegisterSingleton(
 		KanonSchemaServiceToken,
@@ -98,21 +98,21 @@ func (m *KanonModule) Register(dependencyManager *plugins.DependencyManager) err
 			return NewKanonSchemaService(m.ledgerClient)
 		},
 	)
-	
+
 	dependencyManager.RegisterSingleton(
 		KanonCredDefServiceToken,
 		func(dm *plugins.DependencyManager) interface{} {
 			return NewKanonCredDefService(m.ledgerClient)
 		},
 	)
-	
+
 	dependencyManager.RegisterSingleton(
 		KanonRevocationServiceToken,
 		func(dm *plugins.DependencyManager) interface{} {
 			return NewKanonRevocationService(m.ledgerClient)
 		},
 	)
-	
+
 	return nil
 }
 
@@ -121,7 +121,7 @@ func (m *KanonModule) Initialize(agentContext interface{}) error {
 	if !m.config.Enabled {
 		return nil
 	}
-	
+
 	// Test connection to ledger
 	if m.ledgerClient != nil {
 		// Verify we can connect to the ledger
@@ -133,7 +133,7 @@ func (m *KanonModule) Initialize(agentContext interface{}) error {
 			fmt.Println("✅ Kanon module initialized with in-memory ledger")
 		}
 	}
-	
+
 	return nil
 }
 
@@ -154,26 +154,26 @@ func (m *KanonModule) createLedgerClient() (ledger.KanonLedger, error) {
 	if m.config.UseMemory {
 		return ledger.NewMemoryLedger(), nil
 	}
-	
+
 	// Create EVM ledger client
 	if m.config.RpcUrl == "" {
 		return nil, fmt.Errorf("RPC URL is required for EVM ledger")
 	}
-	
+
 	evmConfig := &ledger.EvmLedgerConfig{
 		RpcUrl:          m.config.RpcUrl,
 		PrivateKey:      m.config.PrivateKey,
 		ContractAddress: m.config.ContractAddress,
 		ChainId:         m.config.ChainId,
 	}
-	
+
 	evmLedger, err := ledger.NewEvmLedger(evmConfig)
 	if err != nil {
 		// Fallback to memory ledger if EVM fails
 		fmt.Printf("Warning: Failed to create EVM ledger (%v), using memory ledger\n", err)
 		return ledger.NewMemoryLedger(), nil
 	}
-	
+
 	return evmLedger, nil
 }
 
@@ -189,7 +189,7 @@ func (m *KanonModule) registerWithAnonCredsRegistry(dependencyManager *plugins.D
 			},
 		)
 	}
-	
+
 	// Register a factory that adds Kanon registry to the service
 	dependencyManager.RegisterSingleton(
 		plugins.NewInjectionToken("kanonRegistryInitializer"),
@@ -202,7 +202,7 @@ func (m *KanonModule) registerWithAnonCredsRegistry(dependencyManager *plugins.D
 					pattern := regexp.MustCompile(`^(did:kanon:|schema:kanon:|creddef:kanon:)`)
 					kanonRegistry := regkanon.New(pattern, m.ledgerClient)
 					router.Register(kanonRegistry)
-					
+
 					fmt.Println("✅ Kanon registry registered with AnonCreds service")
 				}
 			}
@@ -222,7 +222,7 @@ func (m *KanonModule) registerDidResolver(dependencyManager *plugins.DependencyM
 				if resolver, ok := didResolverService.(*dids.DidResolverService); ok {
 					kanonDidResolver := NewKanonDidResolver(m.ledgerClient)
 					resolver.RegisterResolver(kanonDidResolver)
-					
+
 					fmt.Println("✅ Kanon DID resolver registered")
 				}
 			}
@@ -233,8 +233,8 @@ func (m *KanonModule) registerDidResolver(dependencyManager *plugins.DependencyM
 
 // Service tokens for Kanon-specific services
 var (
-	KanonLedgerToken           = plugins.NewInjectionToken("KanonLedger")
-	KanonSchemaServiceToken    = plugins.NewInjectionToken("KanonSchemaService")
-	KanonCredDefServiceToken   = plugins.NewInjectionToken("KanonCredDefService")
+	KanonLedgerToken            = plugins.NewInjectionToken("KanonLedger")
+	KanonSchemaServiceToken     = plugins.NewInjectionToken("KanonSchemaService")
+	KanonCredDefServiceToken    = plugins.NewInjectionToken("KanonCredDefService")
 	KanonRevocationServiceToken = plugins.NewInjectionToken("KanonRevocationService")
 )

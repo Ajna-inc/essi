@@ -8,8 +8,8 @@ const ProposePresentationV2Type = "https://didcomm.org/present-proof/2.0/propose
 
 type ProposePresentationV2 struct {
 	*messages.BaseMessage
-	Comment           string                    `json:"comment,omitempty"`
-	Formats           []AttachmentFormat           `json:"formats"`
+	Comment             string                         `json:"comment,omitempty"`
+	Formats             []AttachmentFormat             `json:"formats"`
 	ProposalAttachments []messages.AttachmentDecorator `json:"proposal~attach"`
 }
 

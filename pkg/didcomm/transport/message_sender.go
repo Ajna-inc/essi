@@ -3,15 +3,17 @@ package transport
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
+	"sort"
 	"strings"
 
+	"github.com/ajna-inc/essi/pkg/core/common"
 	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/di"
+	"github.com/ajna-inc/essi/pkg/core/encoding"
 	"github.com/ajna-inc/essi/pkg/core/events"
 	"github.com/ajna-inc/essi/pkg/core/logger"
-	"github.com/ajna-inc/essi/pkg/core/common"
-	"github.com/ajna-inc/essi/pkg/core/encoding"
 	"github.com/ajna-inc/essi/pkg/core/wallet"
 	"github.com/ajna-inc/essi/pkg/didcomm/decorators/transport"
 	"github.com/ajna-inc/essi/pkg/didcomm/messages"
@@ -19,6 +21,7 @@ import (
 	connectionServices "github.com/ajna-inc/essi/pkg/didcomm/modules/connections/services"
 	"github.com/ajna-inc/essi/pkg/didcomm/modules/oob"
 	oobMessages "github.com/ajna-inc/essi/pkg/didcomm/modules/oob/messages"
+	routingmessages "github.com/ajna-inc/essi/pkg/didcomm/modules/routing/messages"
 	envelopeServices "github.com/ajna-inc/essi/pkg/didcomm/services"
 	dids "github.com/ajna-inc/essi/pkg/dids"
 	peer "github.com/ajna-inc/essi/pkg/dids/methods/peer"
@@ -223,7 +226,7 @@ func (ms *MessageSender) sendToService(outboundContext *models.OutboundMessageCo
 	}
 
 	recipientKeys := service.RecipientKeys
-	// routingKeys := service.RoutingKeys // TODO: Use for routing later
+	routingKeys := service.RoutingKeys
 
 	packageType := envelopeServices.PackageTypeAnoncrypt
 	msgType := message.GetType()
@@ -256,13 +259,64 @@ func (ms *MessageSender) sendToService(outboundContext *models.OutboundMessageCo
 	}
 	logger.Infof("🔎 [sendToService] final packageType=%s", packageType)
 
-	// Pack the message
+	// Pack the message to the final recipient
 	encryptedMessage, err := ms.envelopeService.PackMessage(message, recipientKeys, packageType)
 	if err != nil {
 		return fmt.Errorf("failed to pack message: %w", err)
 	}
 
-	// Send via appropriate transport
+	// If routing keys are present, wrap using RFC0094 forward messages
+	if len(routingKeys) > 0 {
+		// Determine final recipient identifier for the forward 'to' parameter
+		// Use the first recipient key. Convert did:key or multibase to base58
+		finalTo := ""
+		if len(recipientKeys) > 0 {
+			rk := recipientKeys[0]
+			if strings.HasPrefix(rk, "did:key:") {
+				if b58 := DidKeyToBase58(rk); b58 != "" {
+					finalTo = b58
+				}
+			} else if strings.HasPrefix(rk, "z") {
+				if b58 := MultibaseToBase58(rk); b58 != "" {
+					finalTo = b58
+				}
+			} else {
+				finalTo = rk
+			}
+		}
+		if finalTo == "" {
+			return fmt.Errorf("unable to derive final recipient key for routing")
+		}
+
+		// Wrap from last router to first
+		inner := encryptedMessage
+		for i := len(routingKeys) - 1; i >= 0; i-- {
+			routeKey := routingKeys[i]
+			routeB58 := routeKey
+			if strings.HasPrefix(routeKey, "did:key:") {
+				if b58 := DidKeyToBase58(routeKey); b58 != "" {
+					routeB58 = b58
+				}
+			} else if strings.HasPrefix(routeKey, "z") {
+				if b58 := MultibaseToBase58(routeKey); b58 != "" {
+					routeB58 = b58
+				}
+			}
+			// Build forward plaintext message
+			fwd := routingmessages.NewForward(finalTo, inner)
+			// Pack for the router (anoncrypt)
+			packed, perr := ms.envelopeService.PackMessage(fwd, []string{routeB58}, envelopeServices.PackageTypeAnoncrypt)
+			if perr != nil {
+				return fmt.Errorf("failed to pack forward for router: %w", perr)
+			}
+			// Next layer 'to' equals current router key for outer forward (if more routers remain)
+			finalTo = routeB58
+			inner = packed
+		}
+		encryptedMessage = inner
+	}
+
+	// Send via appropriate transport (or queue fallback)
 	endpoint := service.ServiceEndpoint
 	for _, transport := range ms.outboundTransports {
 		if transport.CanSend(endpoint) {
@@ -316,7 +370,21 @@ func (ms *MessageSender) sendToService(outboundContext *models.OutboundMessageCo
 		}
 	}
 
-	return fmt.Errorf("unable to send message to service: %s", endpoint)
+	// If no transport could send, enqueue (queue transport fallback)
+	repo := GetGlobalQueueRepository()
+	recipients := []string{}
+	for _, rk := range recipientKeys {
+		recipients = append(recipients, rk)
+	}
+	repo.Add(&QueuedMessage{
+		ConnectionId:  outboundContext.Connection.ID,
+		RecipientDids: recipients,
+		Payload:       encryptedMessage,
+		CreatedAt:     time.Now(),
+	})
+	logger = getLoggerFromCtx(ms.agentContext, ms.typedDI)
+	logger.Infof("📥 Queued message for connection %s (no direct transport)", outboundContext.Connection.ID)
+	return nil
 }
 
 // sendMessageToSession sends a message via an existing session
@@ -407,6 +475,24 @@ func (ms *MessageSender) retrieveServicesByConnection(connection *connectionServ
 		if resolver != nil {
 			if res, rerr := resolver.Resolve(ms.agentContext, connection.TheirDid, nil); rerr == nil && res != nil && res.DidDocument != nil {
 				doc := res.DidDocument
+				// Collect candidates with type rank preference: did-communication < DIDCommMessaging < IndyAgent
+				type cand struct {
+					svc  *models.ResolvedDidCommService
+					rank int
+				}
+				var cands []cand
+				typeRank := func(t string) int {
+					switch t {
+					case dids.ServiceTypeDIDComm:
+						return 0
+					case dids.ServiceTypeDIDCommMessaging:
+						return 1
+					case dids.ServiceTypeIndyAgent:
+						return 2
+					default:
+						return 100
+					}
+				}
 				for _, s := range doc.Service {
 					if s == nil {
 						continue
@@ -417,6 +503,13 @@ func (ms *MessageSender) retrieveServicesByConnection(connection *connectionServ
 					endpoint := ""
 					if ep, ok := s.ServiceEndpoint.(string); ok {
 						endpoint = ep
+					}
+					if endpoint == "" {
+						if obj, ok := s.ServiceEndpoint.(map[string]interface{}); ok && obj != nil {
+							if uri, ok := obj["uri"].(string); ok {
+								endpoint = uri
+							}
+						}
 					}
 					if endpoint == "" || len(s.RecipientKeys) == 0 {
 						continue
@@ -442,8 +535,12 @@ func (ms *MessageSender) retrieveServicesByConnection(connection *connectionServ
 					if len(recips) == 0 {
 						continue
 					}
-					services = append(services, &models.ResolvedDidCommService{ID: s.Id, ServiceEndpoint: endpoint, RecipientKeys: recips, RoutingKeys: s.RoutingKeys})
-					logger.Infof("[services] using DID resolve endpoint=%s keys=%v", endpoint, recips)
+					cands = append(cands, cand{svc: &models.ResolvedDidCommService{ID: s.Id, ServiceEndpoint: endpoint, RecipientKeys: recips, RoutingKeys: s.RoutingKeys}, rank: typeRank(s.Type)})
+				}
+				sort.SliceStable(cands, func(i, j int) bool { return cands[i].rank < cands[j].rank })
+				for _, c := range cands {
+					services = append(services, c.svc)
+					logger.Infof("[services] using DID resolve endpoint=%s keys=%v", c.svc.ServiceEndpoint, c.svc.RecipientKeys)
 				}
 			}
 		}
@@ -465,6 +562,13 @@ func (ms *MessageSender) retrieveServicesByConnection(connection *connectionServ
 						ep := ""
 						if se, ok := s.ServiceEndpoint.(string); ok {
 							ep = se
+						}
+						if ep == "" {
+							if obj, ok := s.ServiceEndpoint.(map[string]interface{}); ok && obj != nil {
+								if uri, ok := obj["uri"].(string); ok {
+									ep = uri
+								}
+							}
 						}
 						if ep == "" || len(s.RecipientKeys) == 0 {
 							continue
@@ -567,10 +671,80 @@ func (ms *MessageSender) resolveSenderKey(connection *connectionServices.Connect
 
 // hasInboundEndpoint checks if we have an inbound endpoint
 func (ms *MessageSender) hasInboundEndpoint(connection *connectionServices.ConnectionRecord) bool {
-	// Check if we have configured endpoints
+	// Prefer checking our DID Document for an inbound endpoint
+	if connection != nil && connection.Did != "" && ms.typedDI != nil {
+		if dep, err := ms.typedDI.Resolve(di.TokenDidResolverService); err == nil {
+			if resolver, ok := dep.(*dids.DidResolverService); ok && resolver != nil {
+				if res, rerr := resolver.Resolve(ms.agentContext, connection.Did, nil); rerr == nil && res != nil && res.DidDocument != nil {
+					doc := res.DidDocument
+					for _, s := range doc.Service {
+						if s == nil {
+							continue
+						}
+						if s.Type != dids.ServiceTypeDIDComm && s.Type != dids.ServiceTypeDIDCommMessaging && s.Type != dids.ServiceTypeIndyAgent {
+							continue
+						}
+						ep := ""
+						if se, ok := s.ServiceEndpoint.(string); ok {
+							ep = se
+						}
+						if ep == "" {
+							if obj, ok := s.ServiceEndpoint.(map[string]interface{}); ok && obj != nil {
+								if uri, ok := obj["uri"].(string); ok {
+									ep = uri
+								}
+							}
+						}
+						if ep != "" && !strings.HasSuffix(ep, ":0") {
+							return true
+						}
+					}
+				}
+			}
+		}
+	}
+	// Fallback: use configured endpoint, but treat :0 as not inbound
 	if ms.connectionService != nil {
 		endpoint := ms.connectionService.GetDefaultServiceEndpoint()
-		return endpoint != ""
+		return endpoint != "" && !strings.HasSuffix(endpoint, ":0")
+	}
+	return false
+}
+
+// hasQueueService checks if the other party's DID Doc signals queue transport support
+func (ms *MessageSender) hasQueueService(connection *connectionServices.ConnectionRecord) bool {
+	if connection == nil || connection.TheirDid == "" || ms.typedDI == nil {
+		return false
+	}
+	if dep, err := ms.typedDI.Resolve(di.TokenDidResolverService); err == nil {
+		if resolver, ok := dep.(*dids.DidResolverService); ok && resolver != nil {
+			if res, rerr := resolver.Resolve(ms.agentContext, connection.TheirDid, nil); rerr == nil && res != nil && res.DidDocument != nil {
+				doc := res.DidDocument
+				for _, s := range doc.Service {
+					if s == nil {
+						continue
+					}
+					if s.Type != dids.ServiceTypeDIDComm && s.Type != dids.ServiceTypeDIDCommMessaging && s.Type != dids.ServiceTypeIndyAgent {
+						continue
+					}
+					// Accept list includes queue
+					for _, acc := range s.Accept {
+						if acc == DidCommTransportQueue {
+							return true
+						}
+					}
+					// Or explicit endpoint equals queue
+					if ep, ok := s.ServiceEndpoint.(string); ok && ep == DidCommTransportQueue {
+						return true
+					}
+					if obj, ok := s.ServiceEndpoint.(map[string]interface{}); ok && obj != nil {
+						if uri, ok := obj["uri"].(string); ok && uri == DidCommTransportQueue {
+							return true
+						}
+					}
+				}
+			}
+		}
 	}
 	return false
 }

@@ -1,9 +1,9 @@
 package utils
 
 import (
-    "encoding/base64"
-    "encoding/json"
-    "strings"
+	"encoding/base64"
+	"encoding/json"
+	"strings"
 )
 
 // Base64ToBase64URL converts a standard base64 string to base64url format
@@ -71,10 +71,15 @@ func EncodeBase64URLString(data []byte) string {
 func DecodeBase64URLString(data string) ([]byte, error) {
 	return base64.RawURLEncoding.DecodeString(data)
 }
+
 // EncodeBase64URLStringFromMap encodes a map to base64url(JSON)
 func EncodeBase64URLStringFromMap(m map[string]interface{}) string {
-    if m == nil { return "" }
-    b, err := json.Marshal(m)
-    if err != nil { return "" }
-    return base64.RawURLEncoding.EncodeToString(b)
+	if m == nil {
+		return ""
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return ""
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
 }

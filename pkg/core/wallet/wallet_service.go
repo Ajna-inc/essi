@@ -8,9 +8,9 @@ import (
 
 	"golang.org/x/crypto/curve25519"
 
+	"github.com/ajna-inc/essi/pkg/core/common"
 	"github.com/ajna-inc/essi/pkg/core/context"
 	"github.com/ajna-inc/essi/pkg/core/storage"
-	"github.com/ajna-inc/essi/pkg/core/common"
 )
 
 // WalletService handles key management and cryptographic operations
@@ -44,18 +44,24 @@ type KeyRecord struct {
 }
 
 // Implement storage.Record JSON methods for full serialization
-func (r *KeyRecord) ToJSON() ([]byte, error) { return json.Marshal(r) }
+func (r *KeyRecord) ToJSON() ([]byte, error)    { return json.Marshal(r) }
 func (r *KeyRecord) FromJSON(data []byte) error { return json.Unmarshal(data, r) }
 
 // Implement Clone to satisfy storage.Record and preserve key data
 func (r *KeyRecord) Clone() storage.Record {
 	clone := &KeyRecord{}
-	if r.BaseRecord != nil { clone.BaseRecord = r.BaseRecord.Clone().(*storage.BaseRecord) }
+	if r.BaseRecord != nil {
+		clone.BaseRecord = r.BaseRecord.Clone().(*storage.BaseRecord)
+	}
 	if r.Key != nil {
 		k := *r.Key
 		// Deep copy slices
-		if r.Key.PublicKey != nil { k.PublicKey = append([]byte(nil), r.Key.PublicKey...) }
-		if r.Key.PrivateKey != nil { k.PrivateKey = append([]byte(nil), r.Key.PrivateKey...) }
+		if r.Key.PublicKey != nil {
+			k.PublicKey = append([]byte(nil), r.Key.PublicKey...)
+		}
+		if r.Key.PrivateKey != nil {
+			k.PrivateKey = append([]byte(nil), r.Key.PrivateKey...)
+		}
 		clone.Key = &k
 	}
 	return clone
@@ -63,9 +69,9 @@ func (r *KeyRecord) Clone() storage.Record {
 
 // Register the "Key" record type so storage can deserialize full records
 func init() {
-    storage.RegisterRecordType("Key", func() storage.Record {
-        return &KeyRecord{ BaseRecord: &storage.BaseRecord{ Type: "Key", Tags: make(map[string]string) } }
-    })
+	storage.RegisterRecordType("Key", func() storage.Record {
+		return &KeyRecord{BaseRecord: &storage.BaseRecord{Type: "Key", Tags: make(map[string]string)}}
+	})
 }
 
 // KeyRepository interface for key storage

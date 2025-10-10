@@ -35,12 +35,12 @@ func (m *ProposeCredentialV2) ToJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var baseMap map[string]interface{}
 	if err := json.Unmarshal(baseJSON, &baseMap); err != nil {
 		return nil, err
 	}
-	
+
 	// Add ProposeCredentialV2-specific fields
 	if m.Comment != "" {
 		baseMap["comment"] = m.Comment
@@ -56,7 +56,7 @@ func (m *ProposeCredentialV2) ToJSON() ([]byte, error) {
 	}
 	baseMap["formats"] = m.Formats
 	baseMap["proposals~attach"] = m.ProposalsAttach
-	
+
 	return json.Marshal(baseMap)
 }
 

@@ -107,7 +107,7 @@ func RegisterTypedSingleton[T any](dm DependencyManager, token TypedToken[T], fa
 	})
 }
 
-// RegisterTypedContextScoped registers a typed context-scoped service using standalone function  
+// RegisterTypedContextScoped registers a typed context-scoped service using standalone function
 func RegisterTypedContextScoped[T any](dm DependencyManager, token TypedToken[T], factory func(DependencyManager) (T, error)) {
 	dm.RegisterContextScoped(token.ToToken(), func(dm DependencyManager) (any, error) {
 		return factory(dm)
@@ -147,7 +147,7 @@ func (dm *dependencyManager) Resolve(token Token) (any, error) {
 		dm.mu.Lock()
 		reg.instance = created
 		dm.mu.Unlock()
-		
+
 		return created, nil
 
 	case ContextScoped:
@@ -156,7 +156,7 @@ func (dm *dependencyManager) Resolve(token Token) (any, error) {
 		}
 
 		contextId := currentCtx.GetCorrelationId()
-		
+
 		// Check if instance exists for this context
 		dm.mu.RLock()
 		if instance, exists := reg.contextInstances[contextId]; exists {
@@ -239,7 +239,7 @@ func (dm *dependencyManager) GetContext() *contextpkg.AgentContext {
 func (dm *dependencyManager) ClearContextInstances(contextId string) {
 	dm.mu.Lock()
 	defer dm.mu.Unlock()
-	
+
 	for _, reg := range dm.registrations {
 		if reg.lifecycle == ContextScoped && reg.contextInstances != nil {
 			delete(reg.contextInstances, contextId)
@@ -251,7 +251,7 @@ func (dm *dependencyManager) ClearContextInstances(contextId string) {
 func (dm *dependencyManager) InitializeModules(ctx *contextpkg.AgentContext) error {
 	// Set context for context-scoped resolution
 	dm.SetContext(ctx)
-	
+
 	for _, m := range dm.modules {
 		if err := m.OnInitializeContext(ctx); err != nil {
 			return err
@@ -270,4 +270,3 @@ func (dm *dependencyManager) ShutdownModules(ctx *contextpkg.AgentContext) error
 	}
 	return nil
 }
-
